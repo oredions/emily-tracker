@@ -2,13 +2,6 @@
 <configurationDescriptor version="97">
   <logicalFolder name="root" displayName="root" projectFiles="true" kind="ROOT">
     <df root="." name="0">
-      <df name="backup">
-        <in>2016 07 03 13 14 main.cpp</in>
-        <in>2016 07 04 14 56 main.cpp</in>
-        <in>2016 07 04 17 16 main.cpp</in>
-        <in>2016 07 04 17 51 main.cpp</in>
-        <in>2016 07 05 13 47 main.cpp</in>
-      </df>
       <df name="CMakeFiles">
         <df name="3.5.1">
           <df name="CompilerIdC">
