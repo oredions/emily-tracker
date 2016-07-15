@@ -274,7 +274,8 @@ static void onMouse(int event, int x, int y, int, void*) {
 
     // Check mouse button
     switch (event) {
-        case EVENT_LBUTTONDOWN:
+        //case EVENT_LBUTTONDOWN: // TODO how to make a selection?
+        case EVENT_RBUTTONDOWN:
 
             // Save current point as click origin
             origin = Point(x, y);
@@ -287,6 +288,7 @@ static void onMouse(int event, int x, int y, int, void*) {
 
             break;
 
+        //case EVENT_LBUTTONUP:
         case EVENT_LBUTTONUP:
 
             // End selection
