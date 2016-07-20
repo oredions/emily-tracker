@@ -65,4 +65,5 @@ commands get_control_commands(int xe, int ye, float theta, int xv, int yv){
 		current_commands.rudder=-1.0;
 	}
 	return current_commands;
+	
 }
