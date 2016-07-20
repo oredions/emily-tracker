@@ -121,6 +121,9 @@ int erode_size = 2;
 // Dilate size
 int dilate_size = 16;
 
+// EMILY location history size to estimate heading
+const int EMILY_LOCATION_HISTORY_SIZE = 15;
+
 ////////////////////////////////////////////////////////////////////////////////
 // GUI Parameters
 ////////////////////////////////////////////////////////////////////////////////
@@ -190,11 +193,11 @@ Point target_location;
 // EMILY location
 Point emily_location;
 
-// EMILY old location
-Point emily_old_location;
+// EMILY location history
+Point emily_location_history[EMILY_LOCATION_HISTORY_SIZE];
 
 // Timer to estimate EMILY heading
-int timer;
+int emily_location_history_pointer;
 
 // EMILY pose
 Point emily_pose_point_1;
@@ -297,15 +300,15 @@ static void onMouse(int event, int x, int y, int flags, void*) {
         // Get intersection with the original image
         selection &= Rect(0, 0, original_frame.cols, original_frame.rows);
     }
-    
+
     // Check mouse button
     switch (event) {
-        
-        // Right drag is reserved for moving over the image
-        // Left click context menu is disabled
-        // Scrool is reserved for zoom
 
-        // Right drag to select EMILY
+            // Right drag is reserved for moving over the image
+            // Left click context menu is disabled
+            // Scrool is reserved for zoom
+
+            // Right drag to select EMILY
         case EVENT_RBUTTONDOWN: // TODO how to make a selection?
 
             // Save current point as click origin
@@ -330,17 +333,17 @@ static void onMouse(int event, int x, int y, int flags, void*) {
             }
 
             break;
-        
-        // Left double click to choose target
+
+            // Left double click to choose target
         case EVENT_LBUTTONDBLCLK:
-            
+
             // Get location of the target
             target_location = Point(x, y);
-            
+
             //cout << int_to_string(target_location.x) + " " + int_to_string(target_location.y) << endl;
-            
+
             break;
-            
+
     }
 }
 
@@ -430,7 +433,7 @@ void draw_principal_axis(RotatedRect rectangle) {
     // Save EMILY pose
     emily_pose_point_1 = shortest_axis_midpoint_1;
     emily_pose_point_2 = shortest_axis_midpoint_2;
-    
+
     // Draw line representing principal axis of symmetry
     line(original_frame, shortest_axis_midpoint_1, shortest_axis_midpoint_2, POSE_LINE_COLOR, 2, 8);
 
@@ -640,15 +643,15 @@ int main(int argc, char** argv) {
         cout << "Cannot open the output video file " << output_file_name_string + ".avi" << " for write." << endl;
         return -1;
     }
-    
+
     ////////////////////////////////////////////////////////////////////////////
     // Log
     ////////////////////////////////////////////////////////////////////////////
 
     // Open log file
     ofstream log_file;
-    log_file.open (output_file_name_string + ".txt");
-    
+    log_file.open(output_file_name_string + ".txt");
+
     ////////////////////////////////////////////////////////////////////////////
     // GUI
     ////////////////////////////////////////////////////////////////////////////
@@ -1042,7 +1045,7 @@ int main(int argc, char** argv) {
 
                     // Draw pose
                     draw_principal_axis(tracking_box);
-                    
+
                     // Save EMILY location
                     emily_location = Point(tracking_box.center.x, tracking_box.center.y);
 
@@ -1095,25 +1098,88 @@ int main(int argc, char** argv) {
         // Compute heading
         ////////////////////////////////////////////////////////////////////////
 
-        // If timer expired
-        if (timer == 6) {
-            
-            // Reset timer
-            timer = 0;
-            
-            // Save current location as last location
-            emily_old_location = emily_location;
-            
-        } else {
-            
-            // Increase timer
-            timer++;
-            
+        // Save current location to history
+        emily_location_history[emily_location_history_pointer] = emily_location;
+
+        // Update circular array pointer
+        emily_location_history_pointer = (emily_location_history_pointer + 1) % EMILY_LOCATION_HISTORY_SIZE;
+
+        // Average of all the angles from points in history to current angle
+        ////////////////////////////////////////////////////////////////////////
+
+//                double angle_sum = 0;
+//        
+//                for (int i = 0; i < EMILY_LOCATION_HISTORY_SIZE; i++) {
+//                    // If the coordinates are not zero
+//                    if (emily_location.x != 0 && emily_location.y != 0 && emily_location_history[i].x != 0 && emily_location_history[i].y != 0) {
+//        
+//                        // Difference in x axis
+//                        int delta_x = emily_location.x - emily_location_history[i].x;
+//        
+//                        // Difference in y axis
+//                        int delta_y = emily_location.y - emily_location_history[i].y;
+//        
+//                        // Angle in degrees
+//                        double angle = atan2(delta_y, delta_x) * (180 / M_PI);
+//        
+//                        angle_sum += angle;
+//                    }
+//                }
+//                
+//                // Angle average
+//                double angle = angle_sum / EMILY_LOCATION_HISTORY_SIZE;
+//        
+//                // Line length
+//                int length = 20;
+//        
+//                // Compute heading point
+//                Point heading_point;
+//                heading_point.x = (int) round(emily_location.x + length * cos(angle * CV_PI / 180.0));
+//                heading_point.y = (int) round(emily_location.y + length * sin(angle * CV_PI / 180.0));
+//        
+//                // Draw line between current location and heading point
+//                line(original_frame, emily_location, heading_point, Scalar(0, 0, 255), 1, 8, 0);
+//        
+//                // Draw line between historical location and current location
+//                line(original_frame, emily_location, emily_location_history[emily_location_history_pointer], Scalar(255, 0, 0), 1, 8, 0);
+
+        // Just the oldest point in history
+        ////////////////////////////////////////////////////////////////////////
+
+        // TODO continue on making heading estimation more reliable. Right now,
+        // it just uses location - 15
+        
+        // If the coordinates are not zero
+        if (emily_location.x != 0 && emily_location.y != 0 && emily_location_history[emily_location_history_pointer].x != 0 && emily_location_history[emily_location_history_pointer].y != 0) {
+
+            // Difference in x axis
+            int delta_x = emily_location.x - emily_location_history[emily_location_history_pointer].x;
+
+            // Difference in y axis
+            int delta_y = emily_location.y - emily_location_history[emily_location_history_pointer].y;
+
+            // Angle in degrees
+            double angle = atan2(delta_y, delta_x) * (180 / M_PI);
+
+            // Print angle to console
+            cout << angle << endl;
+
+            // Line length
+            int length = 20;
+
+            // Compute heading point
+            Point heading_point;
+            heading_point.x = (int) round(emily_location.x + length * cos(angle * CV_PI / 180.0));
+            heading_point.y = (int) round(emily_location.y + length * sin(angle * CV_PI / 180.0));
+
+            // Draw line between current location and heading point
+            line(original_frame, emily_location, heading_point, Scalar(0, 0, 255), 1, 8, 0);
+
+            // Draw line between historical location and current location
+            line(original_frame, emily_location, emily_location_history[emily_location_history_pointer], Scalar(255, 0, 0), 1, 8, 0);
+
         }
-        
-        // Compute heading
-        line(original_frame, emily_old_location, emily_location, Scalar(255, 0, 0), 1, 8, 0);
-        
+
         ////////////////////////////////////////////////////////////////////////
         // Show results
         ////////////////////////////////////////////////////////////////////////
@@ -1146,7 +1212,7 @@ int main(int argc, char** argv) {
 
         // Main Window
         ////////////////////////////////////////////////////////////////////////
-        
+
         // Show target location
         if (target_location.x != 0 && target_location.y != 0) {
             circle(original_frame, target_location, TARGET_RADIUS - 1, TARGET_COLOR, 1, 8, 0);
@@ -1221,11 +1287,11 @@ int main(int argc, char** argv) {
 
         // Write the frame to the output video
         output_video << original_frame;
-        
+
         ////////////////////////////////////////////////////////////////////////
         // Log output
         ////////////////////////////////////////////////////////////////////////
-        
+
         // Get current time
         time_t raw_time;
         time(&raw_time);
@@ -1233,17 +1299,17 @@ int main(int argc, char** argv) {
         local_time = localtime(&raw_time);
         char current_time[40];
         strftime(current_time, 40, "%Y%m%d%H%M%S", local_time);
-        
+
         // Log time
         log_file << current_time;
         log_file << " ";
-        
+
         // Log EMILY location
         log_file << emily_location.x;
         log_file << " ";
         log_file << emily_location.y;
         log_file << " ";
-        
+
         // Log EMILY pose line segment
         log_file << emily_pose_point_1.x;
         log_file << " ";
@@ -1253,27 +1319,27 @@ int main(int argc, char** argv) {
         log_file << " ";
         log_file << emily_pose_point_2.y;
         log_file << " ";
-        
+
         // Log target location
         log_file << target_location.x;
         log_file << " ";
         log_file << target_location.y;
         log_file << "\n";
-        
+
         ////////////////////////////////////////////////////////////////////////
         // Control
         ////////////////////////////////////////////////////////////////////////
-        
+
         //commands = get_control_commands(emily_location.x, emily_location.y, angle, target_location.x, target_location.y);
 
         ////////////////////////////////////////////////////////////////////////
         // Communication
         ////////////////////////////////////////////////////////////////////////
-        
-        
-        
+
+
+
     }
-    
+
     // Close log
     log_file.close();
 
