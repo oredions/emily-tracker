@@ -15,6 +15,8 @@
 
 #include <stdio.h>
 #include <time.h>
+#include <iostream>
+#include <fstream>
 #include "opencv2/opencv.hpp"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,11 +103,13 @@ int hue_2_min = 160;
 int hue_2_max = 180;
 
 // Saturation range for thresholding
-int saturation_min = 120;
+//int saturation_min = 120; // Works well for Fort Bend
+int saturation_min = 10; // Works well for Lake Bryan
 int saturation_max = 255;
 
 // Value range for thresholding
-int value_min = 100;
+//int value_min = 100; // Works well for Fort Bend
+int value_min = 10; // Works well for Fort Bend
 int value_max = 255;
 
 // Gaussian blur kernel size
@@ -146,6 +150,12 @@ const int LOCATION_THICKNESS = 1;
 // Object pose line color
 const Scalar POSE_LINE_COLOR = Scalar(0, 255, 255);
 
+// Target color
+const Scalar TARGET_COLOR = Scalar(0, 0, 255);
+
+// Target crosshairs radius
+const int TARGET_RADIUS = 10;
+
 ////////////////////////////////////////////////////////////////////////////////
 // Global variables
 ////////////////////////////////////////////////////////////////////////////////
@@ -173,6 +183,22 @@ bool resize_video = false;
 
 // Original frame
 Mat original_frame;
+
+// Target location for EMILY to go to
+Point target_location;
+
+// EMILY location
+Point emily_location;
+
+// EMILY old location
+Point emily_old_location;
+
+// Timer to estimate EMILY heading
+int timer;
+
+// EMILY pose
+Point emily_pose_point_1;
+Point emily_pose_point_2;
 
 /**
  * Convert integer to string.
@@ -216,7 +242,7 @@ void on_trackbar(int, void*) {
 void create_main_window() {
 
     // Show new window
-    namedWindow(MAIN_WINDOW, 0);
+    namedWindow(MAIN_WINDOW, CV_GUI_NORMAL);
 
 #ifndef CAMSHIFT
 
@@ -257,7 +283,7 @@ void create_main_window() {
  * Select object of interest in image.
  * 
  */
-static void onMouse(int event, int x, int y, int, void*) {
+static void onMouse(int event, int x, int y, int flags, void*) {
 
     // Select object mode
     if (select_object) {
@@ -271,11 +297,16 @@ static void onMouse(int event, int x, int y, int, void*) {
         // Get intersection with the original image
         selection &= Rect(0, 0, original_frame.cols, original_frame.rows);
     }
-
+    
     // Check mouse button
     switch (event) {
-        //case EVENT_LBUTTONDOWN: // TODO how to make a selection?
-        case EVENT_RBUTTONDOWN:
+        
+        // Right drag is reserved for moving over the image
+        // Left click context menu is disabled
+        // Scrool is reserved for zoom
+
+        // Right drag to select EMILY
+        case EVENT_RBUTTONDOWN: // TODO how to make a selection?
 
             // Save current point as click origin
             origin = Point(x, y);
@@ -288,8 +319,7 @@ static void onMouse(int event, int x, int y, int, void*) {
 
             break;
 
-        //case EVENT_LBUTTONUP:
-        case EVENT_LBUTTONUP:
+        case EVENT_RBUTTONUP:
 
             // End selection
             select_object = false;
@@ -300,6 +330,17 @@ static void onMouse(int event, int x, int y, int, void*) {
             }
 
             break;
+        
+        // Left double click to choose target
+        case EVENT_LBUTTONDBLCLK:
+            
+            // Get location of the target
+            target_location = Point(x, y);
+            
+            //cout << int_to_string(target_location.x) + " " + int_to_string(target_location.y) << endl;
+            
+            break;
+            
     }
 }
 
@@ -386,6 +427,10 @@ void draw_principal_axis(RotatedRect rectangle) {
     Point shortest_axis_midpoint_1 = (rectangle_points[shortest_axis_index] + rectangle_points[(shortest_axis_index + 1) % 4]) * 0.5;
     Point shortest_axis_midpoint_2 = (rectangle_points[(shortest_axis_index + 2) % 4] + rectangle_points[(shortest_axis_index + 3) % 4]) * 0.5;
 
+    // Save EMILY pose
+    emily_pose_point_1 = shortest_axis_midpoint_1;
+    emily_pose_point_2 = shortest_axis_midpoint_2;
+    
     // Draw line representing principal axis of symmetry
     line(original_frame, shortest_axis_midpoint_1, shortest_axis_midpoint_2, POSE_LINE_COLOR, 2, 8);
 
@@ -584,17 +629,26 @@ int main(int argc, char** argv) {
     struct tm * local_time;
     local_time = localtime(&raw_time);
     char output_file_name[40];
-    strftime(output_file_name, 40, "output/%Y_%m_%d_%H_%M_%S.avi", local_time);
+    strftime(output_file_name, 40, "output/%Y_%m_%d_%H_%M_%S", local_time);
+    string output_file_name_string(output_file_name);
 
     // Open output video file
-    VideoWriter output_video(output_file_name, output_video_codec, input_video_fps, resized_video_size, true);
+    VideoWriter output_video(output_file_name_string + ".avi", output_video_codec, input_video_fps, resized_video_size, true);
 
     // Check if output video file was successfully opened
     if (!output_video.isOpened()) {
-        cout << "Cannot open the output video file " << output_file_name << " for write." << endl;
+        cout << "Cannot open the output video file " << output_file_name_string + ".avi" << " for write." << endl;
         return -1;
     }
+    
+    ////////////////////////////////////////////////////////////////////////////
+    // Log
+    ////////////////////////////////////////////////////////////////////////////
 
+    // Open log file
+    ofstream log_file;
+    log_file.open (output_file_name_string + ".txt");
+    
     ////////////////////////////////////////////////////////////////////////////
     // GUI
     ////////////////////////////////////////////////////////////////////////////
@@ -988,6 +1042,9 @@ int main(int argc, char** argv) {
 
                     // Draw pose
                     draw_principal_axis(tracking_box);
+                    
+                    // Save EMILY location
+                    emily_location = Point(tracking_box.center.x, tracking_box.center.y);
 
                 }
 
@@ -1032,8 +1089,31 @@ int main(int argc, char** argv) {
                 break;
         }
 
-#endif        
+#endif
 
+        ////////////////////////////////////////////////////////////////////////
+        // Compute heading
+        ////////////////////////////////////////////////////////////////////////
+
+        // If timer expired
+        if (timer == 6) {
+            
+            // Reset timer
+            timer = 0;
+            
+            // Save current location as last location
+            emily_old_location = emily_location;
+            
+        } else {
+            
+            // Increase timer
+            timer++;
+            
+        }
+        
+        // Compute heading
+        line(original_frame, emily_old_location, emily_location, Scalar(255, 0, 0), 1, 8, 0);
+        
         ////////////////////////////////////////////////////////////////////////
         // Show results
         ////////////////////////////////////////////////////////////////////////
@@ -1066,6 +1146,13 @@ int main(int argc, char** argv) {
 
         // Main Window
         ////////////////////////////////////////////////////////////////////////
+        
+        // Show target location
+        if (target_location.x != 0 && target_location.y != 0) {
+            circle(original_frame, target_location, TARGET_RADIUS - 1, TARGET_COLOR, 1, 8, 0);
+            line(original_frame, Point(target_location.x - (TARGET_RADIUS / 2), target_location.y + (TARGET_RADIUS / 2)), Point(target_location.x + (TARGET_RADIUS / 2), target_location.y - (TARGET_RADIUS / 2)), TARGET_COLOR, 1, 8, 0);
+            line(original_frame, Point(target_location.x - (TARGET_RADIUS / 2), target_location.y - (TARGET_RADIUS / 2)), Point(target_location.x + (TARGET_RADIUS / 2), target_location.y + (TARGET_RADIUS / 2)), TARGET_COLOR, 1, 8, 0);
+        }
 
 #ifndef CAMSHIFT        
 
@@ -1134,8 +1221,61 @@ int main(int argc, char** argv) {
 
         // Write the frame to the output video
         output_video << original_frame;
+        
+        ////////////////////////////////////////////////////////////////////////
+        // Log output
+        ////////////////////////////////////////////////////////////////////////
+        
+        // Get current time
+        time_t raw_time;
+        time(&raw_time);
+        struct tm * local_time;
+        local_time = localtime(&raw_time);
+        char current_time[40];
+        strftime(current_time, 40, "%Y%m%d%H%M%S", local_time);
+        
+        // Log time
+        log_file << current_time;
+        log_file << " ";
+        
+        // Log EMILY location
+        log_file << emily_location.x;
+        log_file << " ";
+        log_file << emily_location.y;
+        log_file << " ";
+        
+        // Log EMILY pose line segment
+        log_file << emily_pose_point_1.x;
+        log_file << " ";
+        log_file << emily_pose_point_1.y;
+        log_file << " ";
+        log_file << emily_pose_point_2.x;
+        log_file << " ";
+        log_file << emily_pose_point_2.y;
+        log_file << " ";
+        
+        // Log target location
+        log_file << target_location.x;
+        log_file << " ";
+        log_file << target_location.y;
+        log_file << "\n";
+        
+        ////////////////////////////////////////////////////////////////////////
+        // Control
+        ////////////////////////////////////////////////////////////////////////
+        
+        //commands = get_control_commands(emily_location.x, emily_location.y, angle, target_location.x, target_location.y);
 
+        ////////////////////////////////////////////////////////////////////////
+        // Communication
+        ////////////////////////////////////////////////////////////////////////
+        
+        
+        
     }
+    
+    // Close log
+    log_file.close();
 
     // Announce that the processing was finished
     cout << "Processing finished!" << endl;
