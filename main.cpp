@@ -18,6 +18,7 @@
 #include <iostream>
 #include <fstream>
 #include "opencv2/opencv.hpp"
+#include "control.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // TODOs
@@ -65,7 +66,10 @@ VideoCapture video_capture("rtmp://127.0.0.1/EMILY_Tracker/fotokite");
 //VideoCapture video_capture("input/2016_04_26_fort_bend.mp4");
 
 // Lake Bryan AI Robotics class final 2016 05 10
-VideoCapture video_capture("input/2016_05_10_lake_bryan.mov");
+//VideoCapture video_capture("input/2016_05_10_lake_bryan.mov");
+
+// USB web camera
+VideoCapture video_capture(0);
 
 #endif
 
@@ -115,6 +119,9 @@ int value_max = 255;
 // Gaussian blur kernel size
 int blur_kernel_size = 21;
 
+int target_radius = 100;
+int proportional = 10;
+
 // Erode size
 int erode_size = 2;
 
@@ -150,6 +157,9 @@ const Scalar LOCATION_COLOR = Scalar(0, 255, 0);
 // Object position crosshairs thickness
 const int LOCATION_THICKNESS = 1;
 
+// Thickness of heading estimation lines
+const int HEADING_LINE_THICKNESS = 3;
+
 // Object pose line color
 const Scalar POSE_LINE_COLOR = Scalar(0, 255, 255);
 
@@ -170,7 +180,7 @@ bool back_projection_mode = false;
 bool select_object = false;
 
 // Track object mode toggle
-int track_object = 0;
+int object_selected = 0;
 
 // Original point of click
 Point origin;
@@ -195,6 +205,12 @@ Point emily_location;
 
 // EMILY location history
 Point emily_location_history[EMILY_LOCATION_HISTORY_SIZE];
+
+// EMILY motion angle
+double emily_angle;
+
+// Target was reached
+bool target_reached = false;
 
 // Timer to estimate EMILY heading
 int emily_location_history_pointer;
@@ -270,6 +286,12 @@ void create_main_window() {
     // Gaussian blur trackbar
     createTrackbar("Blur", MAIN_WINDOW, &blur_kernel_size, min(resized_video_size.height, resized_video_size.width), on_trackbar);
 
+    // Target reached radius trackbar
+    createTrackbar("Radius", MAIN_WINDOW, &target_radius, min(resized_video_size.height, resized_video_size.width), on_trackbar);
+    
+    // Proportional controller trackbar
+    createTrackbar("Proportion", MAIN_WINDOW, &proportional, 100, on_trackbar);
+    
 #ifndef CAMSHIFT    
 
     // Erode size trackbar
@@ -329,7 +351,7 @@ static void onMouse(int event, int x, int y, int flags, void*) {
 
             // If the selection has been made, start tracking
             if (selection.width > 0 && selection.height > 0) {
-                track_object = -1;
+                object_selected = -1;
             }
 
             break;
@@ -339,6 +361,7 @@ static void onMouse(int event, int x, int y, int flags, void*) {
 
             // Get location of the target
             target_location = Point(x, y);
+            target_reached = false;
 
             //cout << int_to_string(target_location.x) + " " + int_to_string(target_location.y) << endl;
 
@@ -652,6 +675,14 @@ int main(int argc, char** argv) {
     ofstream log_file;
     log_file.open(output_file_name_string + ".txt");
 
+    // Open rudder log file
+    ofstream rudder_log_file;
+    rudder_log_file.open(output_file_name_string + "_rudder.txt");
+
+    // Open control log file
+    ofstream throttle_log_file;
+    throttle_log_file.open(output_file_name_string + "_throttle.txt");
+
     ////////////////////////////////////////////////////////////////////////////
     // GUI
     ////////////////////////////////////////////////////////////////////////////
@@ -709,7 +740,7 @@ int main(int argc, char** argv) {
     ////////////////////////////////////////////////////////////////////////////
 
     // Iterate over each frame from the video input and wait between iterations.
-    while (waitKey(1) != 27) {
+    while (waitKey(1) != 27) { // TODO wait more for webcam, wait 1 for everything else.
 
         // If not paused       
         if (!paused) {
@@ -722,6 +753,12 @@ int main(int argc, char** argv) {
             }
 
         }
+        
+        ////////////////////////////////////////////////////////////////////////
+        // Global flags
+        ////////////////////////////////////////////////////////////////////////
+        
+        bool target_set = target_location.x != 0 && target_location.y != 0;
 
         ////////////////////////////////////////////////////////////////////////
         // Thresholding
@@ -970,7 +1007,7 @@ int main(int argc, char** argv) {
 
         if (!paused) {
 
-            if (track_object) {
+            if (object_selected) {
 
                 // Threshold on saturation and value, but not on hue
                 inRange(HSV_frame, Scalar(0, saturation_min, value_min), Scalar(180, saturation_max, value_max), saturation_value_threshold);
@@ -981,7 +1018,7 @@ int main(int argc, char** argv) {
                 mixChannels(&HSV_frame, 1, &hue, 1, chanels, 1);
 
                 // Object does not have histogram yet, so create it
-                if (track_object < 0) {
+                if (object_selected < 0) {
 
                     // Region of interest
                     Mat region_of_interest(hue, selection);
@@ -999,7 +1036,7 @@ int main(int argc, char** argv) {
                     object_of_interest = selection;
 
                     // Begin tracking object
-                    track_object = 1;
+                    object_selected = 1;
 
                     // Create histogram visualization
                     histogram_image = Scalar::all(0);
@@ -1052,7 +1089,7 @@ int main(int argc, char** argv) {
                 }
 
             }
-        } else if (track_object < 0) {
+        } else if (object_selected < 0) {
 
             // Un pause if the selection has been made
             paused = false;
@@ -1080,7 +1117,7 @@ int main(int argc, char** argv) {
             case 'c':
 
                 // Stop tracking
-                track_object = 0;
+                object_selected = 0;
                 histogram_image = Scalar::all(0);
 
                 break;
@@ -1098,57 +1135,60 @@ int main(int argc, char** argv) {
         // Compute heading
         ////////////////////////////////////////////////////////////////////////
 
-        // Save current location to history
-        emily_location_history[emily_location_history_pointer] = emily_location;
+        if (target_set && !target_reached) {
 
-        // Update circular array pointer
-        emily_location_history_pointer = (emily_location_history_pointer + 1) % EMILY_LOCATION_HISTORY_SIZE;
+            // Save current location to history
+            emily_location_history[emily_location_history_pointer] = emily_location;
+
+            // Update circular array pointer
+            emily_location_history_pointer = (emily_location_history_pointer + 1) % EMILY_LOCATION_HISTORY_SIZE;
+        }
 
         // Average of all the angles from points in history to current angle
         ////////////////////////////////////////////////////////////////////////
 
-//                double angle_sum = 0;
-//        
-//                for (int i = 0; i < EMILY_LOCATION_HISTORY_SIZE; i++) {
-//                    // If the coordinates are not zero
-//                    if (emily_location.x != 0 && emily_location.y != 0 && emily_location_history[i].x != 0 && emily_location_history[i].y != 0) {
-//        
-//                        // Difference in x axis
-//                        int delta_x = emily_location.x - emily_location_history[i].x;
-//        
-//                        // Difference in y axis
-//                        int delta_y = emily_location.y - emily_location_history[i].y;
-//        
-//                        // Angle in degrees
-//                        double angle = atan2(delta_y, delta_x) * (180 / M_PI);
-//        
-//                        angle_sum += angle;
-//                    }
-//                }
-//                
-//                // Angle average
-//                double angle = angle_sum / EMILY_LOCATION_HISTORY_SIZE;
-//        
-//                // Line length
-//                int length = 20;
-//        
-//                // Compute heading point
-//                Point heading_point;
-//                heading_point.x = (int) round(emily_location.x + length * cos(angle * CV_PI / 180.0));
-//                heading_point.y = (int) round(emily_location.y + length * sin(angle * CV_PI / 180.0));
-//        
-//                // Draw line between current location and heading point
-//                line(original_frame, emily_location, heading_point, Scalar(0, 0, 255), 1, 8, 0);
-//        
-//                // Draw line between historical location and current location
-//                line(original_frame, emily_location, emily_location_history[emily_location_history_pointer], Scalar(255, 0, 0), 1, 8, 0);
+        //                double angle_sum = 0;
+        //        
+        //                for (int i = 0; i < EMILY_LOCATION_HISTORY_SIZE; i++) {
+        //                    // If the coordinates are not zero
+        //                    if (emily_location.x != 0 && emily_location.y != 0 && emily_location_history[i].x != 0 && emily_location_history[i].y != 0) {
+        //        
+        //                        // Difference in x axis
+        //                        int delta_x = emily_location.x - emily_location_history[i].x;
+        //        
+        //                        // Difference in y axis
+        //                        int delta_y = emily_location.y - emily_location_history[i].y;
+        //        
+        //                        // Angle in degrees
+        //                        double angle = atan2(delta_y, delta_x) * (180 / M_PI);
+        //        
+        //                        angle_sum += angle;
+        //                    }
+        //                }
+        //                
+        //                // Angle average
+        //                double angle = angle_sum / EMILY_LOCATION_HISTORY_SIZE;
+        //        
+        //                // Line length
+        //                int length = 20;
+        //        
+        //                // Compute heading point
+        //                Point heading_point;
+        //                heading_point.x = (int) round(emily_location.x + length * cos(angle * CV_PI / 180.0));
+        //                heading_point.y = (int) round(emily_location.y + length * sin(angle * CV_PI / 180.0));
+        //        
+        //                // Draw line between current location and heading point
+        //                line(original_frame, emily_location, heading_point, Scalar(0, 0, 255), 1, 8, 0);
+        //        
+        //                // Draw line between historical location and current location
+        //                line(original_frame, emily_location, emily_location_history[emily_location_history_pointer], Scalar(255, 0, 0), 1, 8, 0);
 
         // Just the oldest point in history
         ////////////////////////////////////////////////////////////////////////
 
         // TODO continue on making heading estimation more reliable. Right now,
         // it just uses location - 15
-        
+
         // If the coordinates are not zero
         if (emily_location.x != 0 && emily_location.y != 0 && emily_location_history[emily_location_history_pointer].x != 0 && emily_location_history[emily_location_history_pointer].y != 0) {
 
@@ -1159,24 +1199,24 @@ int main(int argc, char** argv) {
             int delta_y = emily_location.y - emily_location_history[emily_location_history_pointer].y;
 
             // Angle in degrees
-            double angle = atan2(delta_y, delta_x) * (180 / M_PI);
+            emily_angle = atan2(delta_y, delta_x) * (180 / M_PI);
 
             // Print angle to console
-            cout << angle << endl;
+            //cout << emily_angle << endl;
 
             // Line length
             int length = 20;
 
             // Compute heading point
             Point heading_point;
-            heading_point.x = (int) round(emily_location.x + length * cos(angle * CV_PI / 180.0));
-            heading_point.y = (int) round(emily_location.y + length * sin(angle * CV_PI / 180.0));
+            heading_point.x = (int) round(emily_location.x + length * cos(emily_angle * CV_PI / 180.0));
+            heading_point.y = (int) round(emily_location.y + length * sin(emily_angle * CV_PI / 180.0));
 
             // Draw line between current location and heading point
-            line(original_frame, emily_location, heading_point, Scalar(0, 0, 255), 1, 8, 0);
+            line(original_frame, emily_location, heading_point, Scalar(255, 0, 0), HEADING_LINE_THICKNESS, 8, 0);
 
             // Draw line between historical location and current location
-            line(original_frame, emily_location, emily_location_history[emily_location_history_pointer], Scalar(255, 0, 0), 1, 8, 0);
+            line(original_frame, emily_location, emily_location_history[emily_location_history_pointer], Scalar(255, 0, 0), HEADING_LINE_THICKNESS, 8, 0);
 
         }
 
@@ -1330,7 +1370,54 @@ int main(int argc, char** argv) {
         // Control
         ////////////////////////////////////////////////////////////////////////
 
-        //commands = get_control_commands(emily_location.x, emily_location.y, angle, target_location.x, target_location.y);
+        commands current_commands;
+        
+        // If target was reached, clear the history
+        if (target_reached) {
+            
+            // Set each element in history to 0
+            for (int i = 0; i < EMILY_LOCATION_HISTORY_SIZE; i++) {
+                emily_location_history[i] = Point(0, 0);
+            }
+            
+        }
+        
+        bool heading_known = emily_location.x != 0 && emily_location.y != 0 && emily_location_history[emily_location_history_pointer].x != 0 && emily_location_history[emily_location_history_pointer].y != 0;
+        
+        
+        // If the object is selected, begin control
+        if (object_selected && target_set && !target_reached) {
+
+            if (!heading_known) {
+
+                current_commands.throttle = 0.2;
+                current_commands.rudder = 0;
+
+            } else {
+
+                // Get rudder and throttle
+                current_commands = get_control_commands(emily_location.x, emily_location.y, emily_angle, target_location.x, target_location.y);
+
+            }
+
+        } else {
+
+            current_commands.throttle = 0;
+            current_commands.rudder = 0;
+
+        }
+
+        // Debugging
+        cout << "Throttle: " << current_commands.throttle << endl;
+        cout << "Rudder: " << current_commands.rudder << endl;
+        cout << endl;
+        //cout << emily_angle << endl;
+
+        // Log throttle
+        throttle_log_file << current_commands.throttle << endl;
+
+        // Log rudder
+        rudder_log_file << current_commands.rudder << endl;
 
         ////////////////////////////////////////////////////////////////////////
         // Communication
@@ -1342,6 +1429,7 @@ int main(int argc, char** argv) {
 
     // Close log
     log_file.close();
+    rudder_log_file.close();
 
     // Announce that the processing was finished
     cout << "Processing finished!" << endl;
