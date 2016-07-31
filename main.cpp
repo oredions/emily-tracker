@@ -20,6 +20,27 @@
 #include "opencv2/opencv.hpp"
 #include "control.h"
 
+#include <sys/socket.h>
+#include <netdb.h>
+
+#include <stdlib.h>
+#include <string.h>
+
+#include<stdio.h> //printf
+#include<string.h> //memset
+#include<stdlib.h> //exit(0);
+#include<arpa/inet.h>
+#include<sys/socket.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h> 
+
 ////////////////////////////////////////////////////////////////////////////////
 // TODOs
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,12 +87,22 @@ VideoCapture video_capture("rtmp://127.0.0.1/EMILY_Tracker/fotokite");
 //VideoCapture video_capture("input/2016_04_26_fort_bend.mp4");
 
 // Lake Bryan AI Robotics class final 2016 05 10
-//VideoCapture video_capture("input/2016_05_10_lake_bryan.mov");
+VideoCapture video_capture("input/2016_05_10_lake_bryan.mov");
 
 // USB web camera
-VideoCapture video_capture(0);
+//VideoCapture video_capture(0);
 
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+// Communication
+////////////////////////////////////////////////////////////////////////////////
+
+// IP address and port of EMILY control computer to which to send throttle and
+// rudder valuers.
+
+const char * IP_ADDRESS = "127.0.0.1";
+const short PORT = 5005;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Algorithm
@@ -288,10 +319,10 @@ void create_main_window() {
 
     // Target reached radius trackbar
     createTrackbar("Radius", MAIN_WINDOW, &target_radius, min(resized_video_size.height, resized_video_size.width), on_trackbar);
-    
+
     // Proportional controller trackbar
     createTrackbar("Proportion", MAIN_WINDOW, &proportional, 100, on_trackbar);
-    
+
 #ifndef CAMSHIFT    
 
     // Erode size trackbar
@@ -331,7 +362,7 @@ static void onMouse(int event, int x, int y, int flags, void*) {
             // Scrool is reserved for zoom
 
             // Right drag to select EMILY
-        case EVENT_RBUTTONDOWN: // TODO how to make a selection?
+        case EVENT_RBUTTONDOWN:
 
             // Save current point as click origin
             origin = Point(x, y);
@@ -736,6 +767,23 @@ int main(int argc, char** argv) {
     bool paused = false;
 
     ////////////////////////////////////////////////////////////////////////////
+    // Initialization of communication
+    ////////////////////////////////////////////////////////////////////////////
+
+    // Create socket descriptor. We want to use datagram UDP.
+    int socket_descriptor = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+
+    if (socket_descriptor < 0) {
+        cout << "Error creating socket descriptor." << endl;
+    }
+
+    // Create socket address
+    struct sockaddr_in socket_address;
+    socket_address.sin_family = AF_INET;
+    socket_address.sin_addr.s_addr = inet_addr(IP_ADDRESS);
+    socket_address.sin_port = htons(PORT);
+
+    ////////////////////////////////////////////////////////////////////////////
     // Tracking
     ////////////////////////////////////////////////////////////////////////////
 
@@ -753,11 +801,11 @@ int main(int argc, char** argv) {
             }
 
         }
-        
+
         ////////////////////////////////////////////////////////////////////////
         // Global flags
         ////////////////////////////////////////////////////////////////////////
-        
+
         bool target_set = target_location.x != 0 && target_location.y != 0;
 
         ////////////////////////////////////////////////////////////////////////
@@ -1371,20 +1419,20 @@ int main(int argc, char** argv) {
         ////////////////////////////////////////////////////////////////////////
 
         commands current_commands;
-        
+
         // If target was reached, clear the history
         if (target_reached) {
-            
+
             // Set each element in history to 0
             for (int i = 0; i < EMILY_LOCATION_HISTORY_SIZE; i++) {
                 emily_location_history[i] = Point(0, 0);
             }
-            
+
         }
-        
+
         bool heading_known = emily_location.x != 0 && emily_location.y != 0 && emily_location_history[emily_location_history_pointer].x != 0 && emily_location_history[emily_location_history_pointer].y != 0;
-        
-        
+
+
         // If the object is selected, begin control
         if (object_selected && target_set && !target_reached) {
 
@@ -1423,13 +1471,20 @@ int main(int argc, char** argv) {
         // Communication
         ////////////////////////////////////////////////////////////////////////
 
+        // Send throttle
+        sendto(socket_descriptor, &current_commands.throttle, sizeof (current_commands.throttle), 0, (struct sockaddr *) &socket_address, sizeof (socket_address));
 
-
+        // Send rudder
+        sendto(socket_descriptor, &current_commands.rudder, sizeof (current_commands.rudder), 0, (struct sockaddr *) &socket_address, sizeof (socket_address));
+        
     }
 
     // Close log
     log_file.close();
     rudder_log_file.close();
+    
+    // Close socket
+    close(socket_descriptor);
 
     // Announce that the processing was finished
     cout << "Processing finished!" << endl;
