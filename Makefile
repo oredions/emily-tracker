@@ -123,6 +123,33 @@ EMILYTracker/fast:
 	$(MAKE) -f CMakeFiles/EMILYTracker.dir/build.make CMakeFiles/EMILYTracker.dir/build
 .PHONY : EMILYTracker/fast
 
+control.o: control.cpp.o
+
+.PHONY : control.o
+
+# target to build an object file
+control.cpp.o:
+	$(MAKE) -f CMakeFiles/EMILYTracker.dir/build.make CMakeFiles/EMILYTracker.dir/control.cpp.o
+.PHONY : control.cpp.o
+
+control.i: control.cpp.i
+
+.PHONY : control.i
+
+# target to preprocess a source file
+control.cpp.i:
+	$(MAKE) -f CMakeFiles/EMILYTracker.dir/build.make CMakeFiles/EMILYTracker.dir/control.cpp.i
+.PHONY : control.cpp.i
+
+control.s: control.cpp.s
+
+.PHONY : control.s
+
+# target to generate assembly for a file
+control.cpp.s:
+	$(MAKE) -f CMakeFiles/EMILYTracker.dir/build.make CMakeFiles/EMILYTracker.dir/control.cpp.s
+.PHONY : control.cpp.s
+
 main.o: main.cpp.o
 
 .PHONY : main.o
@@ -159,6 +186,9 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... EMILYTracker"
+	@echo "... control.o"
+	@echo "... control.i"
+	@echo "... control.s"
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"

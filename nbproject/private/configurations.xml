@@ -13,6 +13,8 @@
         </df>
         <df name="CMakeTmp">
         </df>
+        <df name="Control.dir">
+        </df>
         <df name="EMILYTracker.dir">
         </df>
         <in>feature_tests.c</in>
@@ -22,6 +24,8 @@
       </df>
       <df name="output">
       </df>
+      <in>control.cpp</in>
+      <in>control.h</in>
       <in>main.cpp</in>
     </df>
   </logicalFolder>

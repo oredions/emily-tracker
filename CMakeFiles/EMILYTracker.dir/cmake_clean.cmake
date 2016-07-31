@@ -1,4 +1,5 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/EMILYTracker.dir/control.cpp.o"
   "CMakeFiles/EMILYTracker.dir/main.cpp.o"
   "EMILYTracker.pdb"
   "EMILYTracker"
