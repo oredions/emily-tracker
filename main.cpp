@@ -1470,13 +1470,15 @@ int main(int argc, char** argv) {
         ////////////////////////////////////////////////////////////////////////
         // Communication
         ////////////////////////////////////////////////////////////////////////
+        
+        // Pack datagram
+        double package[2];
+        package[0] = current_commands.throttle;
+        package[1] = current_commands.rudder;
 
         // Send throttle
-        sendto(socket_descriptor, &current_commands.throttle, sizeof (current_commands.throttle), 0, (struct sockaddr *) &socket_address, sizeof (socket_address));
+        sendto(socket_descriptor, &package, 2 * sizeof(double), 0, (struct sockaddr *) &socket_address, sizeof (socket_address));
 
-        // Send rudder
-        sendto(socket_descriptor, &current_commands.rudder, sizeof (current_commands.rudder), 0, (struct sockaddr *) &socket_address, sizeof (socket_address));
-        
     }
 
     // Close log

@@ -17,19 +17,11 @@ sock.bind((IP_ADDRESS, PORT))
 while True:
 
 	# Receive throttle (it is double so receive 8 B)
-	throttle_bin, addr = sock.recvfrom(8)
+	package_bin, addr = sock.recvfrom(16)
 	
 	# Unpack binary data to double
-	throttle = unpack('d', throttle_bin)
-
-	# Print throttle formatted as float
-	print 'Throttle %F' % throttle
-
-	# Receive rudder
-	rudder_bin, addr = sock.recvfrom(8)
-
-	# Unpack binary data to double
-	rudder = unpack('d', rudder_bin)
-
-	# Print rudder formatted as float
-	print 'Rudder %F' % rudder
+	package = unpack('dd', package_bin)
+        
+    # Print throttle formatted as float
+	print 'Throttle %F' % package[0]
+	print 'Rudder %F' % package[1]
