@@ -45,9 +45,6 @@
 // TODOs
 ////////////////////////////////////////////////////////////////////////////////
 
-// TODO test with streaming (also check so that you do not actually increase resolution)
-// TODO read the settings from the stream
-
 ////////////////////////////////////////////////////////////////////////////////
 // Name spaces
 ////////////////////////////////////////////////////////////////////////////////
@@ -72,7 +69,7 @@ using namespace std;
 // Screen mirroring application from DJI tablet
 //VideoCapture video_capture("rtsp://10.201.147.238:5000/screen");
 
-// HDMI stream from Teradek VidiU from Fotokite
+// HDMI stream from Teradek VidiU from Fotokite or 3DR Solo
 VideoCapture video_capture("rtmp://127.0.0.1/EMILY_Tracker/fotokite");
 
 #else
@@ -101,7 +98,7 @@ VideoCapture video_capture("input/2016_05_10_lake_bryan.mov");
 // IP address and port of EMILY control computer to which to send throttle and
 // rudder valuers.
 
-const char * IP_ADDRESS = "127.0.0.1";
+const char * IP_ADDRESS = "192.168.1.4";
 const short PORT = 5005;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,7 +114,7 @@ const short PORT = 5005;
 ////////////////////////////////////////////////////////////////////////////////
 
 // Input will be resized to this number of lines to speed up the processing
-//const int PROCESSING_VIDEO_HEIGHT_LIMIT = 640;
+//const int PROCESSING_VIDEO_HEIGHT_LIMIT = 640; // TODO webcam resolution
 // Higher resolution will be better if EMILY is in the distance
 const int PROCESSING_VIDEO_HEIGHT_LIMIT = 1080;
 
@@ -150,7 +147,10 @@ int value_max = 255;
 // Gaussian blur kernel size
 int blur_kernel_size = 21;
 
-int target_radius = 100;
+// When the centroid of EMILY gets closer or equal to this number of pixels, it will consider target to be reached
+int target_radius = 10;
+
+// Value of the proportional parameter of PID
 int proportional = 10;
 
 // Erode size
@@ -160,7 +160,7 @@ int erode_size = 2;
 int dilate_size = 16;
 
 // EMILY location history size to estimate heading
-const int EMILY_LOCATION_HISTORY_SIZE = 15;
+const int EMILY_LOCATION_HISTORY_SIZE = 100;
 
 ////////////////////////////////////////////////////////////////////////////////
 // GUI Parameters
@@ -189,10 +189,13 @@ const Scalar LOCATION_COLOR = Scalar(0, 255, 0);
 const int LOCATION_THICKNESS = 1;
 
 // Thickness of heading estimation lines
-const int HEADING_LINE_THICKNESS = 3;
+const int HEADING_LINE_THICKNESS = 1;
 
 // Object pose line color
 const Scalar POSE_LINE_COLOR = Scalar(0, 255, 255);
+
+// Thickness of pose estimation lines
+const int POSE_LINE_THICKNESS = 1;
 
 // Target color
 const Scalar TARGET_COLOR = Scalar(0, 0, 255);
@@ -489,7 +492,7 @@ void draw_principal_axis(RotatedRect rectangle) {
     emily_pose_point_2 = shortest_axis_midpoint_2;
 
     // Draw line representing principal axis of symmetry
-    line(original_frame, shortest_axis_midpoint_1, shortest_axis_midpoint_2, POSE_LINE_COLOR, 2, 8);
+    line(original_frame, shortest_axis_midpoint_1, shortest_axis_midpoint_2, POSE_LINE_COLOR, POSE_LINE_THICKNESS, 8);
 
 }
 
@@ -788,7 +791,7 @@ int main(int argc, char** argv) {
     ////////////////////////////////////////////////////////////////////////////
 
     // Iterate over each frame from the video input and wait between iterations.
-    while (waitKey(1) != 27) { // TODO wait more for webcam, wait 1 for everything else.
+    while (waitKey(1) != 27) {
 
         // If not paused       
         if (!paused) {
@@ -1234,9 +1237,6 @@ int main(int argc, char** argv) {
         // Just the oldest point in history
         ////////////////////////////////////////////////////////////////////////
 
-        // TODO continue on making heading estimation more reliable. Right now,
-        // it just uses location - 15
-
         // If the coordinates are not zero
         if (emily_location.x != 0 && emily_location.y != 0 && emily_location_history[emily_location_history_pointer].x != 0 && emily_location_history[emily_location_history_pointer].y != 0) {
 
@@ -1266,6 +1266,48 @@ int main(int argc, char** argv) {
             // Draw line between historical location and current location
             line(original_frame, emily_location, emily_location_history[emily_location_history_pointer], Scalar(255, 0, 0), HEADING_LINE_THICKNESS, 8, 0);
 
+        // Fitting a polynomial curve
+        ////////////////////////////////////////////////////////////////////////
+            
+            // Initialize curve
+            vector<Point> path_polynomial_approximation;
+            
+            // Sort EMILY location history chronologically
+            Point emily_location_history_sorted[EMILY_LOCATION_HISTORY_SIZE];
+            for (int i = 0; i < EMILY_LOCATION_HISTORY_SIZE; i++) {
+                emily_location_history_sorted[i] = emily_location_history[(emily_location_history_pointer + i) % EMILY_LOCATION_HISTORY_SIZE];
+            }
+            
+            // Initialize input vector (approxPolyDP takes only vectors and not arrays)
+            vector<Point> input_points(emily_location_history_sorted, emily_location_history_sorted + sizeof emily_location_history_sorted / sizeof emily_location_history_sorted[0]);
+            
+            // Approximate location history with a polynomial curve
+            approxPolyDP(input_points, path_polynomial_approximation, 2, false);
+            
+            // Draw polynomial curve
+            for (int i = 0; i < path_polynomial_approximation.size() - 1; i++) {
+                line(original_frame, path_polynomial_approximation[i], path_polynomial_approximation[i + 1], Scalar(255, 0, 255), HEADING_LINE_THICKNESS, CV_AA);
+            }
+            
+            // Difference in x axis
+            int delta_x_curve = path_polynomial_approximation[path_polynomial_approximation.size() - 1].x - path_polynomial_approximation[path_polynomial_approximation.size() - 2].x;
+
+            // Difference in y axis
+            int delta_Y_curve = path_polynomial_approximation[path_polynomial_approximation.size() - 1].y - path_polynomial_approximation[path_polynomial_approximation.size() - 2].y;
+
+            // Angle in degrees
+            double emily_angle_polynomial_approximation = atan2(delta_Y_curve, delta_x_curve) * (180 / M_PI);
+            
+            // Compute heading point
+            Point heading_point_polynomial_approximation;
+            heading_point_polynomial_approximation.x = (int) round(path_polynomial_approximation[path_polynomial_approximation.size() - 1].x + length * cos(emily_angle_polynomial_approximation * CV_PI / 180.0));
+            heading_point_polynomial_approximation.y = (int) round(path_polynomial_approximation[path_polynomial_approximation.size() - 1].y + length * sin(emily_angle_polynomial_approximation * CV_PI / 180.0));
+
+            // Draw line between current location and heading point
+            line(original_frame, emily_location, heading_point_polynomial_approximation, Scalar(255, 255, 0), HEADING_LINE_THICKNESS, 8, 0);
+            
+            // Use curve polynomial tangent angle
+            emily_angle = emily_angle_polynomial_approximation;
         }
 
         ////////////////////////////////////////////////////////////////////////
@@ -1470,21 +1512,23 @@ int main(int argc, char** argv) {
         ////////////////////////////////////////////////////////////////////////
         // Communication
         ////////////////////////////////////////////////////////////////////////
-        
+
         // Pack datagram
         double package[2];
         package[0] = current_commands.throttle;
         package[1] = current_commands.rudder;
+        //package[0] = 0.0;
+        //package[1] = 0.5;
 
         // Send throttle
-        sendto(socket_descriptor, &package, 2 * sizeof(double), 0, (struct sockaddr *) &socket_address, sizeof (socket_address));
+        sendto(socket_descriptor, &package, 2 * sizeof (double), 0, (struct sockaddr *) &socket_address, sizeof (socket_address));
 
     }
 
     // Close log
     log_file.close();
     rudder_log_file.close();
-    
+
     // Close socket
     close(socket_descriptor);
 

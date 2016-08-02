@@ -2,7 +2,7 @@ import socket
 from struct import *
 
 # IP address settings
-IP_ADDRESS = "127.0.0.1"
+IP_ADDRESS = "192.168.1.4"
 
 # Port settings
 PORT = 5005
