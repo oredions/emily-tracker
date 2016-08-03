@@ -9,8 +9,6 @@ using namespace std;
 
 const double turning_throttle = 0.3;
 const double cruising_throttle = 0.6;
-//const double approach_radius = 100.0; //how many pixels away are defined as reach target // TODO put in gui
-//const double kp = 0.01; //Proportional gain
 double diff;
 
 commands get_control_commands(int xe_i, int ye_i, double theta, int xv_i, int yv_i) {
@@ -29,12 +27,19 @@ commands get_control_commands(int xe_i, int ye_i, double theta, int xv_i, int yv
     current_commands.rudder = 0;
     double dist = sqrt(pow(xe - xv, 2) + pow(ye - yv, 2));
 
+    // Save distance to target
+    current_commands.distance_to_target = dist;
+    
     if (dist < target_radius) { // already reached target
         cout << "Reached the target." << endl;
         target_reached = true;
         return current_commands;
     } else {
         if (fabs(target_vector - theta) < 180) { //normal case
+            
+            // Save error angle to target
+            current_commands.angle_error_to_target = target_vector - theta;
+            
             if (fabs(target_vector - theta) < 30) { //PID mode
                 current_commands.throttle = cruising_throttle;
                 current_commands.rudder = kp * (target_vector - theta);
@@ -53,6 +58,10 @@ commands get_control_commands(int xe_i, int ye_i, double theta, int xv_i, int yv
             } else {
                 diff = (target_vector - theta) + 360;
             }
+            
+            // Save error angle to target
+            current_commands.angle_error_to_target = diff;
+            
             if (fabs(diff) < 30) { //PID mode
                 current_commands.throttle = cruising_throttle;
                 current_commands.rudder = kp * diff;

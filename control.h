@@ -1,6 +1,8 @@
 struct commands{
 	double throttle; //0-1.0
 	double rudder; //-1.0-1.0
+        double distance_to_target;
+        double angle_error_to_target;
 };
 
 // Target was reached

@@ -84,10 +84,10 @@ VideoCapture video_capture("rtmp://127.0.0.1/EMILY_Tracker/fotokite");
 //VideoCapture video_capture("input/2016_04_26_fort_bend.mp4");
 
 // Lake Bryan AI Robotics class final 2016 05 10
-VideoCapture video_capture("input/2016_05_10_lake_bryan.mov");
+//VideoCapture video_capture("input/2016_05_10_lake_bryan.mov");
 
 // USB web camera
-//VideoCapture video_capture(0);
+VideoCapture video_capture(1);
 
 #endif
 
@@ -114,9 +114,9 @@ const short PORT = 5005;
 ////////////////////////////////////////////////////////////////////////////////
 
 // Input will be resized to this number of lines to speed up the processing
-//const int PROCESSING_VIDEO_HEIGHT_LIMIT = 640; // TODO webcam resolution
+//const int PROCESSING_VIDEO_HEIGHT_LIMIT = 640; // MOD webcam resolution
 // Higher resolution will be better if EMILY is in the distance
-const int PROCESSING_VIDEO_HEIGHT_LIMIT = 1080;
+const int PROCESSING_VIDEO_HEIGHT_LIMIT = 1200;
 
 // Blob size restrictions. Blobs outside of this range will be ignored.
 const int MIN_BLOB_AREA = 1 * 1;
@@ -160,7 +160,7 @@ int erode_size = 2;
 int dilate_size = 16;
 
 // EMILY location history size to estimate heading
-const int EMILY_LOCATION_HISTORY_SIZE = 100;
+const int EMILY_LOCATION_HISTORY_SIZE = 50;
 
 ////////////////////////////////////////////////////////////////////////////////
 // GUI Parameters
@@ -188,14 +188,17 @@ const Scalar LOCATION_COLOR = Scalar(0, 255, 0);
 // Object position crosshairs thickness
 const int LOCATION_THICKNESS = 1;
 
-// Thickness of heading estimation lines
-const int HEADING_LINE_THICKNESS = 1;
-
 // Object pose line color
 const Scalar POSE_LINE_COLOR = Scalar(0, 255, 255);
 
 // Thickness of pose estimation lines
 const int POSE_LINE_THICKNESS = 1;
+
+// Thickness of heading estimation lines
+const int HEADING_LINE_THICKNESS = 1; // MOD change to 4 for lab testing
+
+// Length of the heading line
+const int HEADING_LINE_LENGTH = 20; // MOD change to 200 for lab testing
 
 // Target color
 const Scalar TARGET_COLOR = Scalar(0, 0, 255);
@@ -602,44 +605,46 @@ int main(int argc, char** argv) {
 
     ////////////////////////////////////////////////////////////////////////////
     // Output video initialization
-    ////////////////////////////////////////////////////////////////////////////
-
-#ifndef VIDEO_STREAM    
+    //////////////////////////////////////////////////////////////////////////// 
 
     // Get FPS of the input video
     double input_video_fps = video_capture.get(CV_CAP_PROP_FPS);
 
-#else
-
     // If the input is video stream, we have to calculate FPS manually
+    if (input_video_fps == 0) {
 
-    // Number of sample frames to capture
-    int num_sample_frames = 120;
+        // Number of sample frames to capture
+        int num_sample_frames = 200;
 
-    // Start and end times
-    time_t start, end;
+        // Start and end times
+        time_t start, end;
 
-    // Sample video frame
-    Mat sample_frame;
+        // Sample video frame
+        Mat sample_frame;
 
-    // Start timer
-    time(&start);
+        // Start timer
+        time(&start);
 
-    // Load sample frames
-    for (int i = 0; i < num_sample_frames; i++) {
-        video_capture >> sample_frame;
+        // Load sample frames
+        for (int i = 0; i < num_sample_frames; i++) {
+            video_capture >> sample_frame;
+        }
+
+        // End timer
+        time(&end);
+
+        // Compute elapsed time
+        double time_difference = difftime(end, start);
+
+        // Calculate frames per second
+        input_video_fps = num_sample_frames / time_difference;
+        
+        // The maximum frame rate from MPEG 4 is 65.535
+        if (input_video_fps > 65.535) {
+            input_video_fps = 65.535;
+        }
+        
     }
-
-    // End timer
-    time(&end);
-
-    // Compute elapsed time
-    double time_difference = difftime(end, start);
-
-    // Calculate frames per second
-    double input_video_fps = num_sample_frames / time_difference;
-
-#endif
 
     // Get the size of input video
     Size input_video_size(video_capture.get(CV_CAP_PROP_FRAME_WIDTH), video_capture.get(CV_CAP_PROP_FRAME_HEIGHT));
@@ -1220,13 +1225,10 @@ int main(int argc, char** argv) {
         //                // Angle average
         //                double angle = angle_sum / EMILY_LOCATION_HISTORY_SIZE;
         //        
-        //                // Line length
-        //                int length = 20;
-        //        
         //                // Compute heading point
         //                Point heading_point;
-        //                heading_point.x = (int) round(emily_location.x + length * cos(angle * CV_PI / 180.0));
-        //                heading_point.y = (int) round(emily_location.y + length * sin(angle * CV_PI / 180.0));
+        //                heading_point.x = (int) round(emily_location.x + HEADING_LINE_LENGTH * cos(angle * CV_PI / 180.0));
+        //                heading_point.y = (int) round(emily_location.y + HEADING_LINE_LENGTH * sin(angle * CV_PI / 180.0));
         //        
         //                // Draw line between current location and heading point
         //                line(original_frame, emily_location, heading_point, Scalar(0, 0, 255), 1, 8, 0);
@@ -1240,55 +1242,52 @@ int main(int argc, char** argv) {
         // If the coordinates are not zero
         if (emily_location.x != 0 && emily_location.y != 0 && emily_location_history[emily_location_history_pointer].x != 0 && emily_location_history[emily_location_history_pointer].y != 0) {
 
-            // Difference in x axis
-            int delta_x = emily_location.x - emily_location_history[emily_location_history_pointer].x;
+            //            // Difference in x axis
+            //            int delta_x = emily_location.x - emily_location_history[emily_location_history_pointer].x;
+            //
+            //            // Difference in y axis
+            //            int delta_y = emily_location.y - emily_location_history[emily_location_history_pointer].y;
+            //
+            //            // Angle in degrees
+            //            emily_angle = atan2(delta_y, delta_x) * (180 / M_PI);
+            //
+            //            // Print angle to console
+            //            //cout << emily_angle << endl;
+            //
+            //            // Compute heading point
+            //            Point heading_point;
+            //            heading_point.x = (int) round(emily_location.x + HEADING_LINE_LENGTH * cos(emily_angle * CV_PI / 180.0));
+            //            heading_point.y = (int) round(emily_location.y + HEADING_LINE_LENGTH * sin(emily_angle * CV_PI / 180.0));
+            //
+            //            // Draw line between current location and heading point
+            //            line(original_frame, emily_location, heading_point, Scalar(255, 0, 0), HEADING_LINE_THICKNESS, 8, 0);
+            //
+            //            // Draw line between historical location and current location
+            //            line(original_frame, emily_location, emily_location_history[emily_location_history_pointer], Scalar(255, 0, 0), HEADING_LINE_THICKNESS, 8, 0);
 
-            // Difference in y axis
-            int delta_y = emily_location.y - emily_location_history[emily_location_history_pointer].y;
+            // Fitting a polynomial curve
+            ////////////////////////////////////////////////////////////////////////
 
-            // Angle in degrees
-            emily_angle = atan2(delta_y, delta_x) * (180 / M_PI);
-
-            // Print angle to console
-            //cout << emily_angle << endl;
-
-            // Line length
-            int length = 20;
-
-            // Compute heading point
-            Point heading_point;
-            heading_point.x = (int) round(emily_location.x + length * cos(emily_angle * CV_PI / 180.0));
-            heading_point.y = (int) round(emily_location.y + length * sin(emily_angle * CV_PI / 180.0));
-
-            // Draw line between current location and heading point
-            line(original_frame, emily_location, heading_point, Scalar(255, 0, 0), HEADING_LINE_THICKNESS, 8, 0);
-
-            // Draw line between historical location and current location
-            line(original_frame, emily_location, emily_location_history[emily_location_history_pointer], Scalar(255, 0, 0), HEADING_LINE_THICKNESS, 8, 0);
-
-        // Fitting a polynomial curve
-        ////////////////////////////////////////////////////////////////////////
-            
             // Initialize curve
             vector<Point> path_polynomial_approximation;
-            
+
             // Sort EMILY location history chronologically
             Point emily_location_history_sorted[EMILY_LOCATION_HISTORY_SIZE];
             for (int i = 0; i < EMILY_LOCATION_HISTORY_SIZE; i++) {
                 emily_location_history_sorted[i] = emily_location_history[(emily_location_history_pointer + i) % EMILY_LOCATION_HISTORY_SIZE];
             }
-            
+
             // Initialize input vector (approxPolyDP takes only vectors and not arrays)
             vector<Point> input_points(emily_location_history_sorted, emily_location_history_sorted + sizeof emily_location_history_sorted / sizeof emily_location_history_sorted[0]);
-            
+
             // Approximate location history with a polynomial curve
-            approxPolyDP(input_points, path_polynomial_approximation, 2, false);
-            
+            approxPolyDP(input_points, path_polynomial_approximation, 4, false);
+
             // Draw polynomial curve
             for (int i = 0; i < path_polynomial_approximation.size() - 1; i++) {
                 line(original_frame, path_polynomial_approximation[i], path_polynomial_approximation[i + 1], Scalar(255, 0, 255), HEADING_LINE_THICKNESS, CV_AA);
             }
-            
+
             // Difference in x axis
             int delta_x_curve = path_polynomial_approximation[path_polynomial_approximation.size() - 1].x - path_polynomial_approximation[path_polynomial_approximation.size() - 2].x;
 
@@ -1297,15 +1296,15 @@ int main(int argc, char** argv) {
 
             // Angle in degrees
             double emily_angle_polynomial_approximation = atan2(delta_Y_curve, delta_x_curve) * (180 / M_PI);
-            
+
             // Compute heading point
             Point heading_point_polynomial_approximation;
-            heading_point_polynomial_approximation.x = (int) round(path_polynomial_approximation[path_polynomial_approximation.size() - 1].x + length * cos(emily_angle_polynomial_approximation * CV_PI / 180.0));
-            heading_point_polynomial_approximation.y = (int) round(path_polynomial_approximation[path_polynomial_approximation.size() - 1].y + length * sin(emily_angle_polynomial_approximation * CV_PI / 180.0));
+            heading_point_polynomial_approximation.x = (int) round(path_polynomial_approximation[path_polynomial_approximation.size() - 1].x + HEADING_LINE_LENGTH * cos(emily_angle_polynomial_approximation * CV_PI / 180.0));
+            heading_point_polynomial_approximation.y = (int) round(path_polynomial_approximation[path_polynomial_approximation.size() - 1].y + HEADING_LINE_LENGTH * sin(emily_angle_polynomial_approximation * CV_PI / 180.0));
 
             // Draw line between current location and heading point
             line(original_frame, emily_location, heading_point_polynomial_approximation, Scalar(255, 255, 0), HEADING_LINE_THICKNESS, 8, 0);
-            
+
             // Use curve polynomial tangent angle
             emily_angle = emily_angle_polynomial_approximation;
         }
@@ -1419,44 +1418,6 @@ int main(int argc, char** argv) {
         output_video << original_frame;
 
         ////////////////////////////////////////////////////////////////////////
-        // Log output
-        ////////////////////////////////////////////////////////////////////////
-
-        // Get current time
-        time_t raw_time;
-        time(&raw_time);
-        struct tm * local_time;
-        local_time = localtime(&raw_time);
-        char current_time[40];
-        strftime(current_time, 40, "%Y%m%d%H%M%S", local_time);
-
-        // Log time
-        log_file << current_time;
-        log_file << " ";
-
-        // Log EMILY location
-        log_file << emily_location.x;
-        log_file << " ";
-        log_file << emily_location.y;
-        log_file << " ";
-
-        // Log EMILY pose line segment
-        log_file << emily_pose_point_1.x;
-        log_file << " ";
-        log_file << emily_pose_point_1.y;
-        log_file << " ";
-        log_file << emily_pose_point_2.x;
-        log_file << " ";
-        log_file << emily_pose_point_2.y;
-        log_file << " ";
-
-        // Log target location
-        log_file << target_location.x;
-        log_file << " ";
-        log_file << target_location.y;
-        log_file << "\n";
-
-        ////////////////////////////////////////////////////////////////////////
         // Control
         ////////////////////////////////////////////////////////////////////////
 
@@ -1498,10 +1459,7 @@ int main(int argc, char** argv) {
         }
 
         // Debugging
-        cout << "Throttle: " << current_commands.throttle << endl;
-        cout << "Rudder: " << current_commands.rudder << endl;
-        cout << endl;
-        //cout << emily_angle << endl;
+        cout << "Throttle: " << current_commands.throttle << " Rudder: " << current_commands.rudder << endl;
 
         // Log throttle
         throttle_log_file << current_commands.throttle << endl;
@@ -1523,6 +1481,63 @@ int main(int argc, char** argv) {
         // Send throttle
         sendto(socket_descriptor, &package, 2 * sizeof (double), 0, (struct sockaddr *) &socket_address, sizeof (socket_address));
 
+        ////////////////////////////////////////////////////////////////////////
+        // Log output
+        ////////////////////////////////////////////////////////////////////////
+
+        // Get current time
+        time_t raw_time;
+        time(&raw_time);
+        struct tm * local_time;
+        local_time = localtime(&raw_time);
+        char current_time[40];
+        strftime(current_time, 40, "%Y%m%d%H%M%S", local_time);
+
+        // Log time
+        log_file << current_time;
+        log_file << " ";
+
+        // Log EMILY location
+        log_file << emily_location.x;
+        log_file << " ";
+        log_file << emily_location.y;
+        log_file << " ";
+
+        // Log EMILY pose line segment
+        log_file << emily_pose_point_1.x;
+        log_file << " ";
+        log_file << emily_pose_point_1.y;
+        log_file << " ";
+        log_file << emily_pose_point_2.x;
+        log_file << " ";
+        log_file << emily_pose_point_2.y;
+        log_file << " ";
+
+        // Log target location
+        log_file << target_location.x;
+        log_file << " ";
+        log_file << target_location.y;
+        log_file << " ";
+        
+        // Log EMILY angle
+        log_file << emily_angle;
+        log_file << " ";
+        
+        // Log distance to target
+        log_file << current_commands.distance_to_target;
+        log_file << " ";
+        
+        // Log error angle to target
+        log_file << current_commands.angle_error_to_target;
+        log_file << " ";
+        
+        // Log throttle
+        log_file << current_commands.throttle;
+        log_file << " ";
+        
+        // Log rudder
+        log_file << current_commands.rudder;
+        log_file << "\n";
     }
 
     // Close log
