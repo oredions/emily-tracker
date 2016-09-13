@@ -86,10 +86,32 @@ VideoCapture video_capture("rtmp://127.0.0.1/EMILY_Tracker/fotokite");
 // Lake Bryan AI Robotics class final 2016 05 10
 //VideoCapture video_capture("input/2016_05_10_lake_bryan.mov");
 
+// Lab 2016 07 05
+//VideoCapture video_capture("input/2016_07_05_lab.avi");
+
 // USB web camera
-VideoCapture video_capture(1);
+// Sometimes the external USB camera is on 0 and sometimes on 1
+VideoCapture video_capture(0);
 
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+// Algorithm
+////////////////////////////////////////////////////////////////////////////////
+
+// Enable advanced Camshift algorithm. It will let you choose object
+// object of interest, computes histogram, and tracks it using mean shift.
+#define CAMSHIFT
+
+////////////////////////////////////////////////////////////////////////////////
+// Analysis
+////////////////////////////////////////////////////////////////////////////////
+
+// Enables analysis of localization performance. As soon as an object is
+// selected, it will log pixel distance from the mouse cursor. The operator
+// have to keep the cursor in the centroid of EMILY all the time to mark its
+// true position.
+//#define ANALYSIS;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Communication
@@ -100,14 +122,6 @@ VideoCapture video_capture(1);
 
 const char * IP_ADDRESS = "192.168.1.4";
 const short PORT = 5005;
-
-////////////////////////////////////////////////////////////////////////////////
-// Algorithm
-////////////////////////////////////////////////////////////////////////////////
-
-// Enable advanced Camshift algorithm. It will let you choose object
-// object of interest, computes histogram, and tracks it using mean shift.
-#define CAMSHIFT
 
 ////////////////////////////////////////////////////////////////////////////////
 // Algorithm Static Parameters
@@ -132,16 +146,23 @@ int hue_1_max = 10;
 
 // Hue 2 range for thresholding
 int hue_2_min = 160;
+//int hue_2_min = 180; // Works well for lab
+
 int hue_2_max = 180;
 
 // Saturation range for thresholding
+//int saturation_min = 52; // Works well for Lake Bryan 1
 //int saturation_min = 120; // Works well for Fort Bend
-int saturation_min = 10; // Works well for Lake Bryan
+int saturation_min = 10; // Works well for Lake Bryan 2
+//int saturation_min = 130; // Works well for lab
+
 int saturation_max = 255;
 
 // Value range for thresholding
+//int value_min = 10; // Works well for Lake Bryan 1
 //int value_min = 100; // Works well for Fort Bend
-int value_min = 10; // Works well for Fort Bend
+int value_min = 10; // Works well for Lake Bryan 2
+
 int value_max = 255;
 
 // Gaussian blur kernel size
@@ -242,6 +263,12 @@ Point emily_location;
 
 // EMILY location history
 Point emily_location_history[EMILY_LOCATION_HISTORY_SIZE];
+
+#ifdef ANALYSIS
+
+Point mouse_location;
+
+#endif
 
 // EMILY motion angle
 double emily_angle;
@@ -403,7 +430,20 @@ static void onMouse(int event, int x, int y, int flags, void*) {
             //cout << int_to_string(target_location.x) + " " + int_to_string(target_location.y) << endl;
 
             break;
+            
+        #ifdef ANALYSIS
 
+        case EVENT_MOUSEMOVE:
+            
+            // Get mouse location
+            mouse_location = Point(x, y);
+            
+            // Print mouse location
+            //cout << int_to_string(mouse_location.x) + " " + int_to_string(mouse_location.y) << endl;
+            
+            break;
+            
+        #endif
     }
 }
 
@@ -721,7 +761,15 @@ int main(int argc, char** argv) {
     // Open control log file
     ofstream throttle_log_file;
     throttle_log_file.open(output_file_name_string + "_throttle.txt");
+    
+    #ifdef ANALYSIS
 
+    // Open error log file
+    ofstream error_log_file;
+    error_log_file.open(output_file_name_string + "_error.txt");
+    
+    #endif
+    
     ////////////////////////////////////////////////////////////////////////////
     // GUI
     ////////////////////////////////////////////////////////////////////////////
@@ -734,10 +782,10 @@ int main(int argc, char** argv) {
     // Histogram window
     namedWindow("Histogram", 0);
 
+#endif
+    
     // Set mouse handler on main window to choose object of interest
     setMouseCallback(MAIN_WINDOW, onMouse, 0);
-
-#endif
 
     ////////////////////////////////////////////////////////////////////////////
     // Local variables
@@ -1050,6 +1098,9 @@ int main(int argc, char** argv) {
 
                     // Draw object
                     draw_object_position(max_area_object_x, max_area_object_y, object_size, original_frame);
+                    
+                    // Save EMILY location
+                    emily_location = Point(max_area_object_x, max_area_object_y);
                 }
             }
         } else {
@@ -1416,7 +1467,35 @@ int main(int argc, char** argv) {
 
         // Write the frame to the output video
         output_video << original_frame;
+        
+        ////////////////////////////////////////////////////////////////////////
+        // Quantitative analysis
+        ////////////////////////////////////////////////////////////////////////
+        
+        #ifdef ANALYSIS
+        
+        // The objective of this test is to select EMILY and then keep the
+        // cursor in EMILY's center. The program will compute distance error
+        // between the cursor and tracked location.
+        
+        // Only compute the error if object is selected
+        
+        #ifdef CAMSHIFT
+            if (object_selected) {
+        #endif
+            
+            // Compute distance of EMILY from the cursor
+            double distance_error = sqrt(pow(emily_location.x - mouse_location.x, 2) + pow(emily_location.y - mouse_location.y, 2));
+        
+            // Log the distance error
+            error_log_file << distance_error << endl;
 
+        #ifdef CAMSHIFT
+            }
+        #endif
+            
+        #endif
+            
         ////////////////////////////////////////////////////////////////////////
         // Control
         ////////////////////////////////////////////////////////////////////////
@@ -1475,8 +1554,6 @@ int main(int argc, char** argv) {
         double package[2];
         package[0] = current_commands.throttle;
         package[1] = current_commands.rudder;
-        //package[0] = 0.0;
-        //package[1] = 0.5;
 
         // Send throttle
         sendto(socket_descriptor, &package, 2 * sizeof (double), 0, (struct sockaddr *) &socket_address, sizeof (socket_address));
