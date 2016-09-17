@@ -6,6 +6,7 @@ CMakeFiles/EMILYTracker.dir/control.cpp.o: control.h
 
 CMakeFiles/EMILYTracker.dir/main.cpp.o: control.h
 CMakeFiles/EMILYTracker.dir/main.cpp.o: main.cpp
+CMakeFiles/EMILYTracker.dir/main.cpp.o: settings.cpp
 CMakeFiles/EMILYTracker.dir/main.cpp.o: /usr/local/include/opencv/cxcore.h
 CMakeFiles/EMILYTracker.dir/main.cpp.o: /usr/local/include/opencv2/calib3d.hpp
 CMakeFiles/EMILYTracker.dir/main.cpp.o: /usr/local/include/opencv2/calib3d/calib3d_c.h

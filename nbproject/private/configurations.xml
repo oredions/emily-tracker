@@ -27,6 +27,7 @@
       <in>control.cpp</in>
       <in>control.h</in>
       <in>main.cpp</in>
+      <in>settings.cpp</in>
     </df>
   </logicalFolder>
   <projectmakefile>Makefile</projectmakefile>

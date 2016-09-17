@@ -5,7 +5,7 @@
  * @version 2.0
  *  
  * This program is used to track EMILY unmanned surface vehicle in video feed
- * and to get its coordinates and pose.
+ * and navigate it to the given target.
  *
  */
 
@@ -26,11 +26,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include<stdio.h> //printf
-#include<string.h> //memset
-#include<stdlib.h> //exit(0);
-#include<arpa/inet.h>
-#include<sys/socket.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,7 +39,9 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <netdb.h> 
+#include <netdb.h>
+
+#include "settings.cpp"
 
 ////////////////////////////////////////////////////////////////////////////////
 // TODOs
@@ -51,49 +53,6 @@
 
 using namespace cv;
 using namespace std;
-
-////////////////////////////////////////////////////////////////////////////////
-// Input
-////////////////////////////////////////////////////////////////////////////////
-
-// Turn on video stream. If defined, it will take input from stream. If not, it
-// will take input from video file.
-//#define VIDEO_STREAM
-
-#ifdef VIDEO_STREAM
-
-
-// Video streams
-////////////////////////////////////////////////////////////////////////////
-
-// Screen mirroring application from DJI tablet
-//VideoCapture video_capture("rtsp://10.201.147.238:5000/screen");
-
-// HDMI stream from Teradek VidiU from Fotokite or 3DR Solo
-VideoCapture video_capture("rtmp://127.0.0.1/EMILY_Tracker/fotokite");
-
-#else
-
-// Video files
-////////////////////////////////////////////////////////////////////////////
-
-// Lake Bryan AI Robotic class field test 2016 03 31
-//VideoCapture video_capture("input/2016_03_31_lake_bryan.mp4");
-
-// Fort Bend floods 2016 04 26
-//VideoCapture video_capture("input/2016_04_26_fort_bend.mp4");
-
-// Lake Bryan AI Robotics class final 2016 05 10
-//VideoCapture video_capture("input/2016_05_10_lake_bryan.mov");
-
-// Lab 2016 07 05
-//VideoCapture video_capture("input/2016_07_05_lab.avi");
-
-// USB web camera
-// Sometimes the external USB camera is on 0 and sometimes on 1
-VideoCapture video_capture(0);
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // Algorithm
@@ -135,53 +94,6 @@ const int PROCESSING_VIDEO_HEIGHT_LIMIT = 1200;
 // Blob size restrictions. Blobs outside of this range will be ignored.
 const int MIN_BLOB_AREA = 1 * 1;
 int MAX_BLOB_AREA;
-
-////////////////////////////////////////////////////////////////////////////////
-// Algorithm Variable parameters
-////////////////////////////////////////////////////////////////////////////////
-
-// Hue 1 range for thresholding
-int hue_1_min = 0;
-int hue_1_max = 10;
-
-// Hue 2 range for thresholding
-int hue_2_min = 160;
-//int hue_2_min = 180; // Works well for lab
-
-int hue_2_max = 180;
-
-// Saturation range for thresholding
-//int saturation_min = 52; // Works well for Lake Bryan 1
-//int saturation_min = 120; // Works well for Fort Bend
-int saturation_min = 10; // Works well for Lake Bryan 2
-//int saturation_min = 130; // Works well for lab
-
-int saturation_max = 255;
-
-// Value range for thresholding
-//int value_min = 10; // Works well for Lake Bryan 1
-//int value_min = 100; // Works well for Fort Bend
-int value_min = 10; // Works well for Lake Bryan 2
-
-int value_max = 255;
-
-// Gaussian blur kernel size
-int blur_kernel_size = 21;
-
-// When the centroid of EMILY gets closer or equal to this number of pixels, it will consider target to be reached
-int target_radius = 10;
-
-// Value of the proportional parameter of PID
-int proportional = 10;
-
-// Erode size
-int erode_size = 2;
-
-// Dilate size
-int dilate_size = 16;
-
-// EMILY location history size to estimate heading
-const int EMILY_LOCATION_HISTORY_SIZE = 50;
 
 ////////////////////////////////////////////////////////////////////////////////
 // GUI Parameters
@@ -276,12 +188,22 @@ double emily_angle;
 // Target was reached
 bool target_reached = false;
 
+// Target reached in this iteration
+bool target_reached_now = false;
+
 // Timer to estimate EMILY heading
 int emily_location_history_pointer;
 
 // EMILY pose
 Point emily_pose_point_1;
 Point emily_pose_point_2;
+
+// Status of the algorithm
+int status = 0;
+
+// Time it takes to reach the target.
+time_t startTarget, endTarget;
+double timeToTarget = 0;
 
 /**
  * Convert integer to string.
@@ -654,7 +576,7 @@ int main(int argc, char** argv) {
     if (input_video_fps == 0) {
 
         // Number of sample frames to capture
-        int num_sample_frames = 200;
+        int num_sample_frames = 50;
 
         // Start and end times
         time_t start, end;
@@ -685,7 +607,15 @@ int main(int argc, char** argv) {
         }
         
     }
+    
+    // Inogeni for some reason cannot correctly estimate the FPS.
+    // Therefore we use FPS equal to 7 which is frequency of this algorithm.
+    #ifdef INOGENI
 
+    input_video_fps = 7;
+    
+    #endif
+    
     // Get the size of input video
     Size input_video_size(video_capture.get(CV_CAP_PROP_FRAME_WIDTH), video_capture.get(CV_CAP_PROP_FRAME_HEIGHT));
 
@@ -1398,7 +1328,40 @@ int main(int argc, char** argv) {
             circle(original_frame, target_location, TARGET_RADIUS - 1, TARGET_COLOR, 1, 8, 0);
             line(original_frame, Point(target_location.x - (TARGET_RADIUS / 2), target_location.y + (TARGET_RADIUS / 2)), Point(target_location.x + (TARGET_RADIUS / 2), target_location.y - (TARGET_RADIUS / 2)), TARGET_COLOR, 1, 8, 0);
             line(original_frame, Point(target_location.x - (TARGET_RADIUS / 2), target_location.y - (TARGET_RADIUS / 2)), Point(target_location.x + (TARGET_RADIUS / 2), target_location.y + (TARGET_RADIUS / 2)), TARGET_COLOR, 1, 8, 0);
+            
+            // Draw target acceptance radius
+            circle(original_frame, target_location, target_radius, TARGET_COLOR, 1, 8, 0);
         }
+        
+        // Get status as a string message
+        String stringStatus;
+        
+        switch(status) {
+            case 0:
+                stringStatus = "Initialization";
+                break;
+            case 1:
+                stringStatus = "Select EMILY and target.";
+                break;
+            case 2:
+                stringStatus = "Target set. Getting orientation.";
+                break;
+            case 3:
+                stringStatus = "Target set. Going to target.";
+                break;
+            case 4:
+                
+                // Covert time to target to string
+                ostringstream stringStream;
+                stringStream << timeToTarget;
+                std::string timeToTargetString = stringStream.str();
+                
+                stringStatus = "Target reached in " + timeToTargetString + " s";
+                break;
+        }
+        
+        // Print status
+        putText(original_frame, stringStatus, Point(50, 50), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 255), 2);
 
 #ifndef CAMSHIFT        
 
@@ -1509,6 +1472,23 @@ int main(int argc, char** argv) {
             for (int i = 0; i < EMILY_LOCATION_HISTORY_SIZE; i++) {
                 emily_location_history[i] = Point(0, 0);
             }
+            
+            // Set status
+            status = 4;
+            
+            // Target was reached for the first time
+            if (target_reached_now == true) {
+                
+                // End timer
+                time(&endTarget);
+
+                // Compute elapsed time
+                timeToTarget = difftime(endTarget, startTarget);
+                
+                // Reset the flag
+                target_reached_now = false;
+                
+            }
 
         }
 
@@ -1522,18 +1502,35 @@ int main(int argc, char** argv) {
 
                 current_commands.throttle = 0.2;
                 current_commands.rudder = 0;
+                
+                // Set status
+                status = 2;
+                
+                // Start timer
+                time(&startTarget);
 
             } else {
 
                 // Get rudder and throttle
                 current_commands = get_control_commands(emily_location.x, emily_location.y, emily_angle, target_location.x, target_location.y);
 
+                // Set status
+                status = 3;
+                
+                // Next time we reach the target, it is going to be for the first time
+                target_reached_now = true;
+                
             }
 
         } else {
 
             current_commands.throttle = 0;
             current_commands.rudder = 0;
+            
+            if (!target_reached) {
+                // Set status
+                status = 1;
+            }
 
         }
 
@@ -1614,7 +1611,16 @@ int main(int argc, char** argv) {
         
         // Log rudder
         log_file << current_commands.rudder;
+        log_file << " ";
+        
+        // Log status
+        log_file << status;
+        log_file << " ";
+        
+        // Log time to target
+        log_file << timeToTarget;
         log_file << "\n";
+        
     }
 
     // Close log

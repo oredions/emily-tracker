@@ -65,6 +65,12 @@ netinet/in.h
 -
 netdb.h
 -
+settings.cpp
+/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker/settings.cpp
+
+/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker/settings.cpp
+opencv2/opencv.hpp
+/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker/opencv2/opencv.hpp
 
 /usr/local/include/opencv/cxcore.h
 opencv2/core/core_c.h
