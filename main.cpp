@@ -41,7 +41,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
-#include "settings.cpp"
+#include "settings.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // TODOs
@@ -1622,6 +1622,12 @@ int main(int argc, char** argv) {
         log_file << "\n";
         
     }
+    
+    // Stop EMILY
+    double package[2];
+    package[0] = 0;
+    package[1] = 0;
+    sendto(socket_descriptor, &package, 2 * sizeof (double), 0, (struct sockaddr *) &socket_address, sizeof (socket_address));
 
     // Close log
     log_file.close();

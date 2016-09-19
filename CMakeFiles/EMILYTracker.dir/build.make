@@ -43,10 +43,10 @@ RM = /Applications/CMake.app/Contents/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = "/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker"
+CMAKE_SOURCE_DIR = "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker"
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = "/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker"
+CMAKE_BINARY_DIR = "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker"
 
 # Include any dependencies generated for this target.
 include CMakeFiles/EMILYTracker.dir/depend.make
@@ -59,16 +59,16 @@ include CMakeFiles/EMILYTracker.dir/flags.make
 
 CMakeFiles/EMILYTracker.dir/control.cpp.o: CMakeFiles/EMILYTracker.dir/flags.make
 CMakeFiles/EMILYTracker.dir/control.cpp.o: control.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir="/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker/CMakeFiles" --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/EMILYTracker.dir/control.cpp.o"
-	/usr/bin/g++   $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/EMILYTracker.dir/control.cpp.o -c "/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker/control.cpp"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir="/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/CMakeFiles" --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/EMILYTracker.dir/control.cpp.o"
+	/usr/bin/g++   $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/EMILYTracker.dir/control.cpp.o -c "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/control.cpp"
 
 CMakeFiles/EMILYTracker.dir/control.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/EMILYTracker.dir/control.cpp.i"
-	/usr/bin/g++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E "/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker/control.cpp" > CMakeFiles/EMILYTracker.dir/control.cpp.i
+	/usr/bin/g++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/control.cpp" > CMakeFiles/EMILYTracker.dir/control.cpp.i
 
 CMakeFiles/EMILYTracker.dir/control.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/EMILYTracker.dir/control.cpp.s"
-	/usr/bin/g++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S "/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker/control.cpp" -o CMakeFiles/EMILYTracker.dir/control.cpp.s
+	/usr/bin/g++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/control.cpp" -o CMakeFiles/EMILYTracker.dir/control.cpp.s
 
 CMakeFiles/EMILYTracker.dir/control.cpp.o.requires:
 
@@ -83,16 +83,16 @@ CMakeFiles/EMILYTracker.dir/control.cpp.o.provides.build: CMakeFiles/EMILYTracke
 
 CMakeFiles/EMILYTracker.dir/main.cpp.o: CMakeFiles/EMILYTracker.dir/flags.make
 CMakeFiles/EMILYTracker.dir/main.cpp.o: main.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir="/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker/CMakeFiles" --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/EMILYTracker.dir/main.cpp.o"
-	/usr/bin/g++   $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/EMILYTracker.dir/main.cpp.o -c "/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker/main.cpp"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir="/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/CMakeFiles" --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/EMILYTracker.dir/main.cpp.o"
+	/usr/bin/g++   $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/EMILYTracker.dir/main.cpp.o -c "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/main.cpp"
 
 CMakeFiles/EMILYTracker.dir/main.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/EMILYTracker.dir/main.cpp.i"
-	/usr/bin/g++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E "/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker/main.cpp" > CMakeFiles/EMILYTracker.dir/main.cpp.i
+	/usr/bin/g++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/main.cpp" > CMakeFiles/EMILYTracker.dir/main.cpp.i
 
 CMakeFiles/EMILYTracker.dir/main.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/EMILYTracker.dir/main.cpp.s"
-	/usr/bin/g++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S "/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker/main.cpp" -o CMakeFiles/EMILYTracker.dir/main.cpp.s
+	/usr/bin/g++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/main.cpp" -o CMakeFiles/EMILYTracker.dir/main.cpp.s
 
 CMakeFiles/EMILYTracker.dir/main.cpp.o.requires:
 
@@ -158,7 +158,7 @@ EMILYTracker: /usr/local/lib/libopencv_imgproc.3.1.0.dylib
 EMILYTracker: /usr/local/lib/libopencv_flann.3.1.0.dylib
 EMILYTracker: /usr/local/lib/libopencv_core.3.1.0.dylib
 EMILYTracker: CMakeFiles/EMILYTracker.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir="/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker/CMakeFiles" --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX executable EMILYTracker"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir="/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/CMakeFiles" --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX executable EMILYTracker"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/EMILYTracker.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -176,6 +176,6 @@ CMakeFiles/EMILYTracker.dir/clean:
 .PHONY : CMakeFiles/EMILYTracker.dir/clean
 
 CMakeFiles/EMILYTracker.dir/depend:
-	cd "/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker" && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" "/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker" "/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker" "/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker" "/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker" "/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker/CMakeFiles/EMILYTracker.dir/DependInfo.cmake" --color=$(COLOR)
+	cd "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker" && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker" "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker" "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker" "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker" "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/CMakeFiles/EMILYTracker.dir/DependInfo.cmake" --color=$(COLOR)
 .PHONY : CMakeFiles/EMILYTracker.dir/depend
 

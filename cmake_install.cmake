@@ -1,4 +1,4 @@
-# Install script for directory: /Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker
+# Install script for directory: /Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -35,5 +35,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

@@ -1,23 +1,5 @@
 Scanning dependencies of target EMILYTracker
-[ 50%] Building CXX object CMakeFiles/EMILYTracker.dir/main.cpp.o
-/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker/main.cpp:65:38: warning: data argument not used by format string [-Wformat-extra-args]
-    sprintf(TrackbarName, "HUE_MIN", HUE_MIN);
-                          ~~~~~~~~~  ^
-/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker/main.cpp:66:38: warning: data argument not used by format string [-Wformat-extra-args]
-    sprintf(TrackbarName, "HUE_MAX", HUE_MAX);
-                          ~~~~~~~~~  ^
-/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker/main.cpp:67:45: warning: data argument not used by format string [-Wformat-extra-args]
-    sprintf(TrackbarName, "SATURATION_MIN", SATURATION_MIN);
-                          ~~~~~~~~~~~~~~~~  ^
-/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker/main.cpp:68:45: warning: data argument not used by format string [-Wformat-extra-args]
-    sprintf(TrackbarName, "SATURATION_MAX", SATURATION_MAX);
-                          ~~~~~~~~~~~~~~~~  ^
-/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker/main.cpp:69:40: warning: data argument not used by format string [-Wformat-extra-args]
-    sprintf(TrackbarName, "VALUE_MIN", VALUE_MIN);
-                          ~~~~~~~~~~~  ^
-/Users/jan/Documents/Research/EMILY Tracker/Code/EMILYTracker/main.cpp:70:40: warning: data argument not used by format string [-Wformat-extra-args]
-    sprintf(TrackbarName, "VALUE_MAX", VALUE_MAX);
-                          ~~~~~~~~~~~  ^
-6 warnings generated.
+[ 33%] Building CXX object CMakeFiles/EMILYTracker.dir/control.cpp.o
+[ 66%] Building CXX object CMakeFiles/EMILYTracker.dir/main.cpp.o
 [100%] Linking CXX executable EMILYTracker
 [100%] Built target EMILYTracker

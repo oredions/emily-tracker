@@ -1,1 +1,0 @@
-/usr/bin/g++   -g3 -gdwarf-2 -Wl,-search_paths_first -Wl,-headerpad_max_install_names  CMakeFiles/Control.dir/control.cpp.o  -o Control  
