@@ -33,7 +33,7 @@
           <buildCommandWorkingDir>.</buildCommandWorkingDir>
           <buildCommand>${MAKE} -f Makefile</buildCommand>
           <cleanCommand>${MAKE} -f Makefile clean</cleanCommand>
-          <executablePath></executablePath>
+          <executablePath>EMILYTracker</executablePath>
           <ccTool>
             <incDir>
               <pElem>/usr/local/include/opencv</pElem>
