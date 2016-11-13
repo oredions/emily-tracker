@@ -43,6 +43,8 @@
 
 #include "settings.h"
 
+#define PI 3.14
+
 ////////////////////////////////////////////////////////////////////////////////
 // TODOs
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,7 +82,7 @@ using namespace std;
 // rudder valuers.
 
 const char * IP_ADDRESS = "192.168.1.4";
-const short PORT = 5005;
+const short PORT = 5007;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Algorithm Static Parameters
@@ -278,6 +280,9 @@ void create_main_window() {
     // Proportional controller trackbar
     createTrackbar("Proportion", MAIN_WINDOW, &proportional, 100, on_trackbar);
 
+    // Camera angle trackbar
+    createTrackbar("Angle", MAIN_WINDOW, &camera_angle_degrees, 90, on_trackbar);
+
 #ifndef CAMSHIFT    
 
     // Erode size trackbar
@@ -352,20 +357,20 @@ static void onMouse(int event, int x, int y, int flags, void*) {
             //cout << int_to_string(target_location.x) + " " + int_to_string(target_location.y) << endl;
 
             break;
-            
-        #ifdef ANALYSIS
+
+#ifdef ANALYSIS
 
         case EVENT_MOUSEMOVE:
-            
+
             // Get mouse location
             mouse_location = Point(x, y);
-            
+
             // Print mouse location
             //cout << int_to_string(mouse_location.x) + " " + int_to_string(mouse_location.y) << endl;
-            
+
             break;
-            
-        #endif
+
+#endif
     }
 }
 
@@ -600,22 +605,22 @@ int main(int argc, char** argv) {
 
         // Calculate frames per second
         input_video_fps = num_sample_frames / time_difference;
-        
+
         // The maximum frame rate from MPEG 4 is 65.535
         if (input_video_fps > 65.535) {
             input_video_fps = 65.535;
         }
-        
+
     }
-    
+
     // Inogeni for some reason cannot correctly estimate the FPS.
     // Therefore we use FPS equal to 7 which is frequency of this algorithm.
-    #ifdef INOGENI
+#ifdef INOGENI
 
     input_video_fps = 7;
-    
-    #endif
-    
+
+#endif
+
     // Get the size of input video
     Size input_video_size(video_capture.get(CV_CAP_PROP_FRAME_WIDTH), video_capture.get(CV_CAP_PROP_FRAME_HEIGHT));
 
@@ -691,15 +696,15 @@ int main(int argc, char** argv) {
     // Open control log file
     ofstream throttle_log_file;
     throttle_log_file.open(output_file_name_string + "_throttle.txt");
-    
-    #ifdef ANALYSIS
+
+#ifdef ANALYSIS
 
     // Open error log file
     ofstream error_log_file;
     error_log_file.open(output_file_name_string + "_error.txt");
-    
-    #endif
-    
+
+#endif
+
     ////////////////////////////////////////////////////////////////////////////
     // GUI
     ////////////////////////////////////////////////////////////////////////////
@@ -713,7 +718,7 @@ int main(int argc, char** argv) {
     namedWindow("Histogram", 0);
 
 #endif
-    
+
     // Set mouse handler on main window to choose object of interest
     setMouseCallback(MAIN_WINDOW, onMouse, 0);
 
@@ -770,6 +775,14 @@ int main(int argc, char** argv) {
     socket_address.sin_port = htons(PORT);
 
     ////////////////////////////////////////////////////////////////////////////
+    // Initialization of camera distortion parameters
+    ////////////////////////////////////////////////////////////////////////////
+
+    Mat undistortRectifyMap1;
+    Mat undistortRectifyMap2;
+    initUndistortRectifyMap(camera_intrinsic_matrix, camera_distortion_vector, Mat(), getOptimalNewCameraMatrix(camera_intrinsic_matrix, camera_distortion_vector, resized_video_size, 1, resized_video_size, 0), resized_video_size, CV_16SC2, undistortRectifyMap1, undistortRectifyMap2);
+
+    ////////////////////////////////////////////////////////////////////////////
     // Tracking
     ////////////////////////////////////////////////////////////////////////////
 
@@ -795,7 +808,7 @@ int main(int argc, char** argv) {
         bool target_set = target_location.x != 0 && target_location.y != 0;
 
         ////////////////////////////////////////////////////////////////////////
-        // Thresholding
+        // Preprocessing
         ////////////////////////////////////////////////////////////////////////
 
         if (resize_video) {
@@ -817,6 +830,107 @@ int main(int argc, char** argv) {
         split(HSV_frame, HSV_planes);
         equalizeHist(HSV_planes[2], HSV_planes[2]);
         merge(HSV_planes, HSV_frame);
+
+        ////////////////////////////////////////////////////////////////////////
+        // Distortion and Inverse Perspective Warping
+        ////////////////////////////////////////////////////////////////////////
+
+        // Undistort camera
+        remap(original_frame, original_frame, undistortRectifyMap1, undistortRectifyMap2, INTER_LINEAR);
+        remap(HSV_frame, HSV_frame, undistortRectifyMap1, undistortRectifyMap2, INTER_LINEAR);
+
+        // Compute camera angle in radians
+        camera_angle_radians = ((double) camera_angle_degrees - 90.) * PI / 180;
+
+        // Camera projection matrix
+        Mat camera_projection_matrix = (Mat_<double>(4, 3) <<
+                1, 0, 0,
+                0, 1, 0,
+                0, 0, 0,
+                0, 0, 1);
+
+        // Camera rotation matrix
+        Mat camera_rotation_matrix = (Mat_<double>(4, 4) <<
+                1, 0, 0, 0,
+                0, cos(camera_angle_radians), -sin(camera_angle_radians), 0,
+                0, sin(camera_angle_radians), cos(camera_angle_radians), 0,
+                0, 0, 0, 1);
+
+        // Camera translation matrix
+        Mat camera_translation_matrix = (Mat_<double>(4, 4) <<
+                1, 0, 0, 0,
+                0, 1, 0, 0,
+                0, 0, 1, 1,
+                0, 0, 0, 1);
+
+        // Camera intrinsic matrix
+        Mat camera_intrinsic_matrix_3D;
+        hconcat(camera_intrinsic_matrix, Mat(3, 1, CV_64F, double(0)), camera_intrinsic_matrix_3D);
+
+        // Overall camera transformation matrix
+        Mat camera_transformation = (camera_intrinsic_matrix_3D * (camera_translation_matrix * (camera_rotation_matrix * (camera_projection_matrix))));
+
+        // Overall camera transformation inverse
+        Mat camera_transformation_inverse;
+        invert(camera_transformation, camera_transformation_inverse);
+
+        // Get new boundaries of the frame after the application of the transformation
+
+        // Top left corner
+        Mat original_top_left = (Mat_<double>(3, 1) << 0, 0, 1);
+        Mat new_top_left = camera_transformation_inverse * original_top_left;
+        double new_top_left_x = new_top_left.at<double>(0, 0) / new_top_left.at<double>(2, 0);
+        double new_top_left_y = new_top_left.at<double>(1, 0) / new_top_left.at<double>(2, 0);
+
+        // Top right corner
+        Mat original_top_right = (Mat_<double>(3, 1) << resized_video_size.width, 0, 1);
+        Mat new_top_right = camera_transformation_inverse * original_top_right;
+        double new_top_right_x = new_top_right.at<double>(0, 0) / new_top_right.at<double>(2, 0);
+        double new_top_right_y = new_top_right.at<double>(1, 0) / new_top_right.at<double>(2, 0);
+
+        // Bottom left
+        Mat original_bottom_left = (Mat_<double>(3, 1) << 0, resized_video_size.height, 1);
+        Mat new_bottom_left = camera_transformation_inverse * original_bottom_left;
+        double new_bottom_left_x = new_bottom_left.at<double>(0, 0) / new_bottom_left.at<double>(2, 0);
+        double new_bottom_left_y = new_bottom_left.at<double>(1, 0) / new_bottom_left.at<double>(2, 0);
+
+        // Bottom right corner
+        Mat original_bottom_right = (Mat_<double>(3, 1) << resized_video_size.width, resized_video_size.height, 1);
+        Mat new_bottom_right = camera_transformation_inverse * original_bottom_right;
+        double new_bottom_right_x = new_bottom_right.at<double>(0, 0) / new_bottom_right.at<double>(2, 0);
+        double new_bottom_right_y = new_bottom_right.at<double>(1, 0) / new_bottom_right.at<double>(2, 0);
+
+        // Compute scale for each axis so that the image fits the screen
+        double scale_x = resized_video_size.width / abs(new_top_right_x - new_top_left_x);
+        double scale_y = resized_video_size.height / abs(new_bottom_left_y - new_top_left_y);
+
+        // Take overall scale as the largest scale
+        double scale_overall = scale_x > scale_y ? scale_x : scale_y;
+
+        // Scale matrix (scales the frame so that it fits the screen)
+        Mat scale = (Mat_<double>(3, 3) <<
+                scale_overall, 0, 0,
+                0, scale_overall, 0,
+                0, 0, 1);
+        invert(scale, scale);
+
+        // Translation matrix (translate the frame so that it starts at the bottom)
+        Mat translate = (Mat_<double>(3, 3) <<
+                1, 0, resized_video_size.width / 2,
+                0, 1, resized_video_size.height - (new_bottom_left_y * scale_y),
+                0, 0, 1);
+        invert(translate, translate);
+
+        // Redefine overall camera transformation matrix with scale and translation
+        camera_transformation = (camera_intrinsic_matrix_3D * (camera_translation_matrix * (camera_rotation_matrix * (camera_projection_matrix * (scale * (translate))))));
+
+        // Apply inverse perspective warp using the camera transformation matrix
+        warpPerspective(original_frame, original_frame, camera_transformation, resized_video_size, CV_INTER_LINEAR | CV_WARP_INVERSE_MAP | CV_WARP_FILL_OUTLIERS);
+        warpPerspective(HSV_frame, HSV_frame, camera_transformation, resized_video_size, CV_INTER_LINEAR | CV_WARP_INVERSE_MAP | CV_WARP_FILL_OUTLIERS);
+
+        ////////////////////////////////////////////////////////////////////////
+        // Thresholding
+        ////////////////////////////////////////////////////////////////////////
 
 #ifndef CAMSHIFT        
 
@@ -1028,7 +1142,7 @@ int main(int argc, char** argv) {
 
                     // Draw object
                     draw_object_position(max_area_object_x, max_area_object_y, object_size, original_frame);
-                    
+
                     // Save EMILY location
                     emily_location = Point(max_area_object_x, max_area_object_y);
                 }
@@ -1328,15 +1442,15 @@ int main(int argc, char** argv) {
             circle(original_frame, target_location, TARGET_RADIUS - 1, TARGET_COLOR, 1, 8, 0);
             line(original_frame, Point(target_location.x - (TARGET_RADIUS / 2), target_location.y + (TARGET_RADIUS / 2)), Point(target_location.x + (TARGET_RADIUS / 2), target_location.y - (TARGET_RADIUS / 2)), TARGET_COLOR, 1, 8, 0);
             line(original_frame, Point(target_location.x - (TARGET_RADIUS / 2), target_location.y - (TARGET_RADIUS / 2)), Point(target_location.x + (TARGET_RADIUS / 2), target_location.y + (TARGET_RADIUS / 2)), TARGET_COLOR, 1, 8, 0);
-            
+
             // Draw target acceptance radius
             circle(original_frame, target_location, target_radius, TARGET_COLOR, 1, 8, 0);
         }
-        
+
         // Get status as a string message
         String stringStatus;
-        
-        switch(status) {
+
+        switch (status) {
             case 0:
                 stringStatus = "Initialization";
                 break;
@@ -1350,16 +1464,16 @@ int main(int argc, char** argv) {
                 stringStatus = "Target set. Going to target.";
                 break;
             case 4:
-                
+
                 // Covert time to target to string
                 ostringstream stringStream;
                 stringStream << timeToTarget;
                 std::string timeToTargetString = stringStream.str();
-                
+
                 stringStatus = "Target reached in " + timeToTargetString + " s";
                 break;
         }
-        
+
         // Print status
         putText(original_frame, stringStatus, Point(50, 50), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 255), 2);
 
@@ -1430,35 +1544,35 @@ int main(int argc, char** argv) {
 
         // Write the frame to the output video
         output_video << original_frame;
-        
+
         ////////////////////////////////////////////////////////////////////////
         // Quantitative analysis
         ////////////////////////////////////////////////////////////////////////
-        
-        #ifdef ANALYSIS
-        
+
+#ifdef ANALYSIS
+
         // The objective of this test is to select EMILY and then keep the
         // cursor in EMILY's center. The program will compute distance error
         // between the cursor and tracked location.
-        
+
         // Only compute the error if object is selected
-        
-        #ifdef CAMSHIFT
-            if (object_selected) {
-        #endif
-            
+
+#ifdef CAMSHIFT
+        if (object_selected) {
+#endif
+
             // Compute distance of EMILY from the cursor
             double distance_error = sqrt(pow(emily_location.x - mouse_location.x, 2) + pow(emily_location.y - mouse_location.y, 2));
-        
+
             // Log the distance error
             error_log_file << distance_error << endl;
 
-        #ifdef CAMSHIFT
-            }
-        #endif
-            
-        #endif
-            
+#ifdef CAMSHIFT
+        }
+#endif
+
+#endif
+
         ////////////////////////////////////////////////////////////////////////
         // Control
         ////////////////////////////////////////////////////////////////////////
@@ -1472,22 +1586,22 @@ int main(int argc, char** argv) {
             for (int i = 0; i < EMILY_LOCATION_HISTORY_SIZE; i++) {
                 emily_location_history[i] = Point(0, 0);
             }
-            
+
             // Set status
             status = 4;
-            
+
             // Target was reached for the first time
             if (target_reached_now == true) {
-                
+
                 // End timer
                 time(&endTarget);
 
                 // Compute elapsed time
                 timeToTarget = difftime(endTarget, startTarget);
-                
+
                 // Reset the flag
                 target_reached_now = false;
-                
+
             }
 
         }
@@ -1502,10 +1616,10 @@ int main(int argc, char** argv) {
 
                 current_commands.throttle = 0.2;
                 current_commands.rudder = 0;
-                
+
                 // Set status
                 status = 2;
-                
+
                 // Start timer
                 time(&startTarget);
 
@@ -1516,17 +1630,17 @@ int main(int argc, char** argv) {
 
                 // Set status
                 status = 3;
-                
+
                 // Next time we reach the target, it is going to be for the first time
                 target_reached_now = true;
-                
+
             }
 
         } else {
 
             current_commands.throttle = 0;
             current_commands.rudder = 0;
-            
+
             if (!target_reached) {
                 // Set status
                 status = 1;
@@ -1592,37 +1706,37 @@ int main(int argc, char** argv) {
         log_file << " ";
         log_file << target_location.y;
         log_file << " ";
-        
+
         // Log EMILY angle
         log_file << emily_angle;
         log_file << " ";
-        
+
         // Log distance to target
         log_file << current_commands.distance_to_target;
         log_file << " ";
-        
+
         // Log error angle to target
         log_file << current_commands.angle_error_to_target;
         log_file << " ";
-        
+
         // Log throttle
         log_file << current_commands.throttle;
         log_file << " ";
-        
+
         // Log rudder
         log_file << current_commands.rudder;
         log_file << " ";
-        
+
         // Log status
         log_file << status;
         log_file << " ";
-        
+
         // Log time to target
         log_file << timeToTarget;
         log_file << "\n";
-        
+
     }
-    
+
     // Stop EMILY
     double package[2];
     package[0] = 0;
