@@ -1,8 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<configurationDescriptor version="97">
+<configurationDescriptor version="100">
   <logicalFolder name="root" displayName="root" projectFiles="true" kind="ROOT">
     <df root="." name="0">
-      <in>control.cpp</in>
+      <in>Command.cpp</in>
+      <in>Command.hpp</in>
+      <in>Communication.cpp</in>
+      <in>Communication.hpp</in>
+      <in>Control.cpp</in>
+      <in>Logger.cpp</in>
+      <in>Logger.hpp</in>
+      <in>OutputVideo.cpp</in>
+      <in>OutputVideo.hpp</in>
+      <in>Settings.cpp</in>
+      <in>Undistort.cpp</in>
+      <in>Undistort.hpp</in>
+      <in>UserInterface.cpp</in>
+      <in>UserInterface.hpp</in>
       <in>main.cpp</in>
     </df>
     <logicalFolder name="ExternalFiles"
@@ -35,6 +48,7 @@
           <cleanCommand>${MAKE} -f Makefile clean</cleanCommand>
           <executablePath>EMILYTracker</executablePath>
           <ccTool>
+            <standard>8</standard>
             <incDir>
               <pElem>/usr/local/include/opencv</pElem>
               <pElem>/usr/local/include</pElem>
@@ -46,7 +60,33 @@
           <preBuildCommand>${CMAKE} -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=${IDE_CC} -DCMAKE_CXX_COMPILER=${IDE_CXX} -DCMAKE_C_FLAGS_DEBUG="-g3 -gdwarf-2" -DCMAKE_CXX_FLAGS_DEBUG="-g3 -gdwarf-2" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON .</preBuildCommand>
         </preBuild>
       </makefileType>
-      <item path="control.cpp" ex="false" tool="1" flavor2="0">
+      <item path="Command.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="Command.hpp" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="Communication.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="Communication.hpp" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="Control.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="Logger.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="Logger.hpp" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="OutputVideo.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="OutputVideo.hpp" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="Settings.cpp" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="Undistort.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="Undistort.hpp" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="UserInterface.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="UserInterface.hpp" ex="false" tool="3" flavor2="0">
       </item>
       <item path="main.cpp" ex="false" tool="1" flavor2="0">
       </item>

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<configurationDescriptor version="97">
+<configurationDescriptor version="100">
   <logicalFolder name="root" displayName="root" projectFiles="true" kind="ROOT">
     <df root="." name="0">
       <df name="CMakeFiles">
-        <df name="3.5.1">
+        <df name="3.7.2">
           <df name="CompilerIdC">
             <in>CMakeCCompilerId.c</in>
           </df>
@@ -22,10 +22,23 @@
       </df>
       <df name="output">
       </df>
-      <in>control.cpp</in>
-      <in>control.h</in>
+      <in>Command.cpp</in>
+      <in>Command.hpp</in>
+      <in>Communication.cpp</in>
+      <in>Communication.hpp</in>
+      <in>Control.cpp</in>
+      <in>Control.hpp</in>
+      <in>Logger.cpp</in>
+      <in>Logger.hpp</in>
+      <in>OutputVideo.cpp</in>
+      <in>OutputVideo.hpp</in>
+      <in>Settings.cpp</in>
+      <in>Settings.hpp</in>
+      <in>Undistort.cpp</in>
+      <in>Undistort.hpp</in>
+      <in>UserInterface.cpp</in>
+      <in>UserInterface.hpp</in>
       <in>main.cpp</in>
-      <in>settings.h</in>
     </df>
   </logicalFolder>
   <projectmakefile>Makefile</projectmakefile>
@@ -43,6 +56,7 @@
         <compiledir>${AUTO_FOLDER}</compiledir>
         <compilecommandpicklist>
           <compilecommandpicklistitem>${MAKE} ${ITEM_NAME}.o</compilecommandpicklistitem>
+          <compilecommandpicklistitem>${AUTO_COMPILE} -std=c++11</compilecommandpicklistitem>
           <compilecommandpicklistitem>${AUTO_COMPILE}</compilecommandpicklistitem>
         </compilecommandpicklist>
         <compilecommand>${AUTO_COMPILE}</compilecommand>

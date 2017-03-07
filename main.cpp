@@ -18,30 +18,21 @@
 #include <iostream>
 #include <fstream>
 #include "opencv2/opencv.hpp"
-#include "control.h"
-
+#include "settings.hpp"
+#include "Control.hpp"
+#include "OutputVideo.hpp"
+#include "Logger.hpp"
+#include "Communication.hpp"
+#include "UserInterface.hpp"
+#include "Undistort.hpp"
 #include <sys/socket.h>
 #include <netdb.h>
-
 #include <stdlib.h>
 #include <string.h>
-
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include <arpa/inet.h>
-#include <sys/socket.h>
-
-#include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
-#include <string.h>
 #include <sys/types.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
-#include <netdb.h>
-
-#include "settings.h"
 
 #define PI 3.14159265
 
@@ -55,6 +46,24 @@
 
 using namespace cv;
 using namespace std;
+
+////////////////////////////////////////////////////////////////////////////////
+// Settings
+////////////////////////////////////////////////////////////////////////////////
+
+Settings * settings = new Settings();
+
+////////////////////////////////////////////////////////////////////////////////
+// Video Capture
+////////////////////////////////////////////////////////////////////////////////
+
+VideoCapture video_capture = VideoCapture(settings->video_capture_source);
+
+////////////////////////////////////////////////////////////////////////////////
+// Control
+////////////////////////////////////////////////////////////////////////////////
+
+Control * control = new Control(* settings);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Algorithm
@@ -75,87 +84,17 @@ using namespace std;
 //#define ANALYSIS;
 
 ////////////////////////////////////////////////////////////////////////////////
-// Communication
-////////////////////////////////////////////////////////////////////////////////
-
-// IP address and port of EMILY control computer to which to send throttle and
-// rudder valuers.
-
-const char * IP_ADDRESS = "192.168.1.4";
-const short PORT = 5007;
-
-////////////////////////////////////////////////////////////////////////////////
-// Algorithm Static Parameters
-////////////////////////////////////////////////////////////////////////////////
-
-// Input will be resized to this number of lines to speed up the processing
-//const int PROCESSING_VIDEO_HEIGHT_LIMIT = 640; // MOD webcam resolution
-// Higher resolution will be better if EMILY is in the distance
-const int PROCESSING_VIDEO_HEIGHT_LIMIT = 1200;
-
-// Blob size restrictions. Blobs outside of this range will be ignored.
-const int MIN_BLOB_AREA = 1 * 1;
-int MAX_BLOB_AREA;
-
-////////////////////////////////////////////////////////////////////////////////
-// GUI Parameters
-////////////////////////////////////////////////////////////////////////////////
-
-// Enable four frame mode to get more detailed GUI.
-//
-// Two frame mode shows:
-// 1. threshold
-// 2. original image with tracking information
-//
-// Four frame mode shows:
-// 1. blurred image
-// 2. threshold
-// 3. eroded dilated threshold
-// 4. original image with tracking information
-#define FOUR_FRAME_MODE
-
-// Main window name
-const string MAIN_WINDOW = "EMILY Tracker";
-
-// Object position crosshairs color
-const Scalar LOCATION_COLOR = Scalar(0, 255, 0);
-
-// Object position crosshairs thickness
-const int LOCATION_THICKNESS = 1;
-
-// Object pose line color
-const Scalar POSE_LINE_COLOR = Scalar(0, 255, 255);
-
-// Thickness of pose estimation lines
-const int POSE_LINE_THICKNESS = 1;
-
-// Thickness of heading estimation lines
-const int HEADING_LINE_THICKNESS = 1; // MOD change to 4 for lab testing
-
-// Length of the heading line
-const int HEADING_LINE_LENGTH = 20; // MOD change to 200 for lab testing
-
-// Target color
-const Scalar TARGET_COLOR = Scalar(0, 0, 255);
-
-// Target crosshairs radius
-const int TARGET_RADIUS = 10;
-
-////////////////////////////////////////////////////////////////////////////////
 // Global variables
 ////////////////////////////////////////////////////////////////////////////////
 
 // Back projection mode toggle
 bool back_projection_mode = false;
 
-// Select object semaphore
+// Select object flag
 bool select_object = false;
 
 // Track object mode toggle
 int object_selected = 0;
-
-// Original point of click
-Point origin;
 
 // Object selection
 Rect selection;
@@ -176,7 +115,7 @@ Point target_location;
 Point emily_location;
 
 // EMILY location history
-Point emily_location_history[EMILY_LOCATION_HISTORY_SIZE];
+Point * emily_location_history = new Point[settings->EMILY_LOCATION_HISTORY_SIZE];
 
 #ifdef ANALYSIS
 
@@ -206,265 +145,6 @@ int status = 0;
 // Time it takes to reach the target.
 time_t startTarget, endTarget;
 double timeToTarget = 0;
-
-/**
- * Convert integer to string.
- * 
- * @param number integer to be converted to string
- * 
- */
-string int_to_string(int number) {
-    stringstream stringStream;
-    stringStream << number;
-    return stringStream.str();
-}
-
-/**
- * Trackbar handler. Called when track bar is clicked on.
- * 
- */
-void on_trackbar(int, void*) {
-
-    // Gaussian kernel size must be positive and odd. Or, it can be zero’s and
-    // then it is computed from sigma.
-    if (blur_kernel_size % 2 == 0) {
-        blur_kernel_size++;
-    }
-
-    // Erode size cannot be 0
-    if (erode_size == 0) {
-        erode_size++;
-    }
-
-    // Dilate size cannot be 0
-    if (dilate_size == 0) {
-        dilate_size++;
-    }
-}
-
-/**
- * Shows the main window and creates track bars.
- * 
- */
-void create_main_window() {
-
-    // Show new window
-    namedWindow(MAIN_WINDOW, CV_GUI_NORMAL);
-
-#ifndef CAMSHIFT
-
-    // Hue 1 trackbars
-    createTrackbar("H 1 Min", MAIN_WINDOW, &hue_1_min, 180, on_trackbar);
-    createTrackbar("H 1 Max", MAIN_WINDOW, &hue_1_max, 180, on_trackbar);
-
-    // Hue 2 trackbars
-    createTrackbar("H 2 Min", MAIN_WINDOW, &hue_2_min, 180, on_trackbar);
-    createTrackbar("H 2 Max", MAIN_WINDOW, &hue_2_max, 180, on_trackbar);
-
-#endif
-
-    // Saturation trackbars
-    createTrackbar("S Min", MAIN_WINDOW, &saturation_min, 255, on_trackbar);
-    createTrackbar("S Max", MAIN_WINDOW, &saturation_max, 255, on_trackbar);
-
-    // Value trackbars
-    createTrackbar("V Min", MAIN_WINDOW, &value_min, 255, on_trackbar);
-    createTrackbar("V Max", MAIN_WINDOW, &value_max, 255, on_trackbar);
-
-    // Gaussian blur trackbar
-    createTrackbar("Blur", MAIN_WINDOW, &blur_kernel_size, min(resized_video_size.height, resized_video_size.width), on_trackbar);
-
-    // Target reached radius trackbar
-    createTrackbar("Radius", MAIN_WINDOW, &target_radius, min(resized_video_size.height, resized_video_size.width), on_trackbar);
-
-    // Proportional controller trackbar
-    createTrackbar("Proportion", MAIN_WINDOW, &proportional, 100, on_trackbar);
-
-    // Camera angle trackbar
-    createTrackbar("Angle", MAIN_WINDOW, &camera_angle_degrees, 90, on_trackbar);
-
-#ifndef CAMSHIFT    
-
-    // Erode size trackbar
-    createTrackbar("Erode", MAIN_WINDOW, &erode_size, min(resized_video_size.height, resized_video_size.width), on_trackbar);
-
-    // Dilate size trackbar
-    createTrackbar("Dilate", MAIN_WINDOW, &dilate_size, min(resized_video_size.height, resized_video_size.width), on_trackbar);
-
-#endif    
-
-}
-
-/**
- * Select object of interest in image.
- * 
- */
-static void onMouse(int event, int x, int y, int flags, void*) {
-
-    // Select object mode
-    if (select_object) {
-
-        // Get selected rectangle
-        selection.x = MIN(x, origin.x);
-        selection.y = MIN(y, origin.y);
-        selection.width = abs(x - origin.x);
-        selection.height = abs(y - origin.y);
-
-        // Get intersection with the original image
-        selection &= Rect(0, 0, original_frame.cols, original_frame.rows);
-    }
-
-    // Check mouse button
-    switch (event) {
-
-            // Right drag is reserved for moving over the image
-            // Left click context menu is disabled
-            // Scrool is reserved for zoom
-
-            // Right drag to select EMILY
-        case EVENT_RBUTTONDOWN:
-
-            // Save current point as click origin
-            origin = Point(x, y);
-
-            // Initialize rectangle
-            selection = Rect(x, y, 0, 0);
-
-            // Start selection
-            select_object = true;
-
-            break;
-
-        case EVENT_RBUTTONUP:
-
-            // End selection
-            select_object = false;
-
-            // If the selection has been made, start tracking
-            if (selection.width > 0 && selection.height > 0) {
-                object_selected = -1;
-            }
-
-            break;
-
-            // Left double click to choose target
-        case EVENT_LBUTTONDBLCLK:
-
-            // Get location of the target
-            target_location = Point(x, y);
-            target_reached = false;
-
-            //cout << int_to_string(target_location.x) + " " + int_to_string(target_location.y) << endl;
-
-            break;
-
-#ifdef ANALYSIS
-
-        case EVENT_MOUSEMOVE:
-
-            // Get mouse location
-            mouse_location = Point(x, y);
-
-            // Print mouse location
-            //cout << int_to_string(mouse_location.x) + " " + int_to_string(mouse_location.y) << endl;
-
-            break;
-
-#endif
-    }
-}
-
-/**
- * Draws position of the object as crosshairs with the center in the object's
- * centroid.
- * 
- * @param x x coordinate
- * @param y y coordinate
- * @param radius radius of crosshairs
- * @param frame frame to which draw into
- */
-void draw_object_position(int x, int y, double radius, Mat &frame) {
-
-#ifndef CAMSHIFT
-
-    // Circle
-    circle(frame, Point(x, y), radius, LOCATION_COLOR, LOCATION_THICKNESS);
-
-#endif
-
-    // Lines
-    if (y - radius > 0) {
-        line(frame, Point(x, y), Point(x, y - radius), LOCATION_COLOR, LOCATION_THICKNESS);
-    } else {
-        line(frame, Point(x, y), Point(x, 0), LOCATION_COLOR, LOCATION_THICKNESS);
-    }
-
-    if (y + radius < resized_video_size.height) {
-        line(frame, Point(x, y), Point(x, y + radius), LOCATION_COLOR, LOCATION_THICKNESS);
-    } else {
-        line(frame, Point(x, y), Point(x, resized_video_size.height), LOCATION_COLOR, LOCATION_THICKNESS);
-    }
-
-    if (x - radius > 0) {
-        line(frame, Point(x, y), Point(x - radius, y), LOCATION_COLOR, LOCATION_THICKNESS);
-    } else {
-        line(frame, Point(x, y), Point(0, y), LOCATION_COLOR, LOCATION_THICKNESS);
-    }
-
-    if (x + radius < resized_video_size.width) {
-        line(frame, Point(x, y), Point(x + radius, y), LOCATION_COLOR, LOCATION_THICKNESS);
-    } else {
-        line(frame, Point(x, y), Point(resized_video_size.width, y), LOCATION_COLOR, LOCATION_THICKNESS);
-    }
-
-    // Text coordinates
-    putText(frame, "[" + int_to_string(x) + "," + int_to_string(y) + "]", Point(x, y + radius + 20), 1, 1, LOCATION_COLOR, 1, 8);
-}
-
-/**
- * Draws axis of given rotated rectangle. Axis is an principal axis of symmetry.
- * 
- * @param rectangle rotated rectangle for which to draw principal axis
- */
-void draw_principal_axis(RotatedRect rectangle) {
-
-    // Get EMILY pose as the principal symmetry axis of bounding rectangle
-
-    // Get points of bounding rectangle
-    Point2f rectangle_points[4];
-    rectangle.points(rectangle_points);
-
-    // Initialize variables to look for the rectangle shortest side
-    double shortest_axis = DBL_MAX;
-    int shortest_axis_index;
-
-    // For each side
-    for (int j = 0; j < 4; j++) {
-
-        // Line length
-        double line_length = norm(rectangle_points[j] - rectangle_points[(j + 1) % 4]);
-
-        if (line_length < shortest_axis) {
-            shortest_axis = line_length;
-            shortest_axis_index = j;
-        }
-
-        // Draw line of the bounding rectangle
-        //line( frame, rectangle_points[j], rectangle_points[(j + 1) % 4], color, 1, 8 );
-    }
-
-    // Get midpoints of the shortest sides
-    Point shortest_axis_midpoint_1 = (rectangle_points[shortest_axis_index] + rectangle_points[(shortest_axis_index + 1) % 4]) * 0.5;
-    Point shortest_axis_midpoint_2 = (rectangle_points[(shortest_axis_index + 2) % 4] + rectangle_points[(shortest_axis_index + 3) % 4]) * 0.5;
-
-    // Save EMILY pose
-    emily_pose_point_1 = shortest_axis_midpoint_1;
-    emily_pose_point_2 = shortest_axis_midpoint_2;
-
-    // Draw line representing principal axis of symmetry
-    line(original_frame, shortest_axis_midpoint_1, shortest_axis_midpoint_2, POSE_LINE_COLOR, POSE_LINE_THICKNESS, 8);
-
-}
 
 double get_size(RotatedRect rectangle) {
 
@@ -564,17 +244,7 @@ double getOrientation(const vector<Point> &pts, Mat &img) {
     return angle;
 }
 
-/**
- * Track EMILY in video feed.
- * 
- */
-int main(int argc, char** argv) {
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Output video initialization
-    //////////////////////////////////////////////////////////////////////////// 
-
-    // Get FPS of the input video
+double get_input_video_fps() {
     double input_video_fps = video_capture.get(CV_CAP_PROP_FPS);
 
     // If the input is video stream, we have to calculate FPS manually
@@ -613,32 +283,28 @@ int main(int argc, char** argv) {
 
     }
 
-    // Inogeni for some reason cannot correctly estimate the FPS.
-    // Therefore we use FPS equal to 7 which is frequency of this algorithm.
-#ifdef INOGENI
+    return input_video_fps;
+}
 
-    input_video_fps = 7;
-
-#endif
-
-    // Get the size of input video
+void get_input_video_size() {
+    
     Size input_video_size(video_capture.get(CV_CAP_PROP_FRAME_WIDTH), video_capture.get(CV_CAP_PROP_FRAME_HEIGHT));
 
     // If the input video exceeds processing video size limits, we will have to resize it
-    if (input_video_size.height > PROCESSING_VIDEO_HEIGHT_LIMIT) {
+    if (input_video_size.height > settings->PROCESSING_VIDEO_HEIGHT_LIMIT) {
 
         // Compute scale ratio
-        double ratio = (double) PROCESSING_VIDEO_HEIGHT_LIMIT / input_video_size.height;
+        double ratio = (double) settings->PROCESSING_VIDEO_HEIGHT_LIMIT / input_video_size.height;
 
         // Compute new width
         int new_video_width = input_video_size.width * ratio;
 
         // Set new size
-        resized_video_size.height = PROCESSING_VIDEO_HEIGHT_LIMIT;
+        resized_video_size.height = settings->PROCESSING_VIDEO_HEIGHT_LIMIT;
         resized_video_size.width = new_video_width;
 
         // Set parameter for maximum blob area
-        MAX_BLOB_AREA = resized_video_size.height * resized_video_size.width;
+        settings->MAX_BLOB_AREA = resized_video_size.height * resized_video_size.width;
 
         // Indicate that resizing is necessary
         resize_video = true;
@@ -650,18 +316,213 @@ int main(int argc, char** argv) {
         resized_video_size.width = input_video_size.width;
 
         // Set parameter for maximum blob area
-        MAX_BLOB_AREA = resized_video_size.height * resized_video_size.width;
+        settings->MAX_BLOB_AREA = resized_video_size.height * resized_video_size.width;
 
         // Indicate that resizing is not necessary
         resize_video = false;
 
     }
+}
 
-    // Codec used to output the video
-    // This is higher size: int outputVideoCodec = CV_FOURCC('W','R','L','E');
-    // This works navite on Mac: int outputVideoCodec = CV_FOURCC('m', 'p', '4', 'v');
-    // This works with ffmpeg
-    int output_video_codec = CV_FOURCC('D', 'I', 'V', 'X');
+void equalize(Mat& HSV_frame){
+    vector<Mat> HSV_planes;
+    split(HSV_frame, HSV_planes);
+    equalizeHist(HSV_planes[2], HSV_planes[2]);
+    merge(HSV_planes, HSV_frame);
+}
+
+void create_histogram(Rect& object_of_interest, int& histogram_size, const float*& pointer_histogram_ranges, Mat& hue, Mat& saturation_value_threshold, Mat& histogram, Mat& histogram_image){
+    
+    // Region of interest
+    Mat region_of_interest(hue, selection);
+    
+    // Region of interest mask
+    Mat region_of_interest_mask(saturation_value_threshold, selection);
+    
+    // Calculate histogram of region of interest
+    calcHist(&region_of_interest, 1, 0, region_of_interest_mask, histogram, 1, &histogram_size, &pointer_histogram_ranges);
+    
+    // Normalize histogram
+    normalize(histogram, histogram, 0, 255, NORM_MINMAX);
+    
+    // Set object of interest to selection
+    object_of_interest = selection;
+    
+    // Begin tracking object
+    object_selected = 1;
+    
+    // Create histogram visualization
+    histogram_image = Scalar::all(0);
+    int bins_width = histogram_image.cols / histogram_size;
+    Mat buffer(1, histogram_size, CV_8UC3);
+    for (int i = 0; i < histogram_size; i++)
+        buffer.at<Vec3b>(i) = Vec3b(saturate_cast<uchar> (i * 180. / histogram_size), 255, 255);
+    cvtColor(buffer, buffer, COLOR_HSV2BGR);
+    for (int i = 0; i < histogram_size; i++) {
+        int val = saturate_cast<int> (histogram.at<float> (i) * histogram_image.rows / 255);
+        rectangle(histogram_image, Point(i*bins_width, histogram_image.rows), Point((i + 1) * bins_width, histogram_image.rows - val), Scalar(buffer.at<Vec3b>(i)), -1, 8);
+    }
+}
+
+void get_orientation(){
+    
+    // Initialize curve
+    vector<Point> path_polynomial_approximation;
+    
+    // Sort EMILY location history chronologically
+    Point * emily_location_history_sorted = new Point[settings->EMILY_LOCATION_HISTORY_SIZE];
+    
+    // Initialize input vector (approxPolyDP takes only vectors and not arrays)
+    vector<Point> input_points;
+    
+    for (int i = 0; i < settings->EMILY_LOCATION_HISTORY_SIZE; i++) {
+        emily_location_history_sorted[i] = emily_location_history[(emily_location_history_pointer + i) % settings->EMILY_LOCATION_HISTORY_SIZE];
+        input_points.push_back(emily_location_history_sorted[i]);
+    }
+    
+    // Approximate location history with a polynomial curve
+    approxPolyDP(input_points, path_polynomial_approximation, 4, false);
+
+    // Draw polynomial curve
+    for (int i = 0; i < path_polynomial_approximation.size() - 1; i++) {
+        line(original_frame, path_polynomial_approximation[i], path_polynomial_approximation[i + 1], Scalar(255, 0, 255), settings->HEADING_LINE_THICKNESS, CV_AA);
+    }
+    
+    // Difference in x axis
+    int delta_x_curve = path_polynomial_approximation[path_polynomial_approximation.size() - 1].x - path_polynomial_approximation[path_polynomial_approximation.size() - 2].x;
+    
+    // Difference in y axis
+    int delta_Y_curve = path_polynomial_approximation[path_polynomial_approximation.size() - 1].y - path_polynomial_approximation[path_polynomial_approximation.size() - 2].y;
+    
+    // Angle in degrees
+    double emily_angle_polynomial_approximation = atan2(delta_Y_curve, delta_x_curve) * (180 / M_PI);
+    
+    // Compute heading point
+    Point heading_point_polynomial_approximation;
+    heading_point_polynomial_approximation.x = (int) round(path_polynomial_approximation[path_polynomial_approximation.size() - 1].x + settings->HEADING_LINE_LENGTH * cos(emily_angle_polynomial_approximation * CV_PI / 180.0));
+    heading_point_polynomial_approximation.y = (int) round(path_polynomial_approximation[path_polynomial_approximation.size() - 1].y + settings->HEADING_LINE_LENGTH * sin(emily_angle_polynomial_approximation * CV_PI / 180.0));
+    
+    // Draw line between current location and heading point
+    line(original_frame, emily_location, heading_point_polynomial_approximation, Scalar(255, 255, 0), settings->HEADING_LINE_THICKNESS, 8, 0);
+    
+    // Use curve polynomial tangent angle
+    emily_angle = emily_angle_polynomial_approximation;
+}
+
+void create_log_entry(Logger* logger, Command* current_commands){
+    
+    // Log throttle
+    logger->log_throttle(current_commands->get_throttle());
+    logger->log_throttle("\n");
+    
+    // Log rudder
+    logger->log_rudder(current_commands->get_rudder());
+    logger->log_rudder("\n");
+    
+    // Get current time
+    time_t raw_time;
+    time(&raw_time);
+    struct tm * local_time;
+    local_time = localtime(&raw_time);
+    char current_time[40];
+    strftime(current_time, 40, "%Y%m%d%H%M%S", local_time);
+    
+    // Log time
+    logger->log_general(current_time);
+    logger->log_general(" ");
+    
+    // Log EMILY location
+    logger->log_general(emily_location.x);
+    logger->log_general(" ");
+    logger->log_general(emily_location.y);
+    logger->log_general(" ");
+    
+    // Log EMILY pose line segment
+    logger->log_general(emily_pose_point_1.x);
+    logger->log_general(" ");
+    logger->log_general(emily_pose_point_1.y);
+    logger->log_general(" ");
+    logger->log_general(emily_pose_point_2.x);
+    logger->log_general(" ");
+    logger->log_general(emily_pose_point_2.y);
+    logger->log_general(" ");
+    
+    // Log target location
+    logger->log_general(target_location.x);
+    logger->log_general(" ");
+    logger->log_general(target_location.y);
+    logger->log_general(" ");
+    
+    // Log EMILY angle
+    logger->log_general(emily_angle);
+    logger->log_general(" ");
+    
+    // Log distance to target
+    logger->log_general(current_commands->get_distance_to_target());
+    logger->log_general(" ");
+    
+    // Log error angle to target
+    logger->log_general(current_commands->get_angle_error_to_target());
+    logger->log_general(" ");
+    
+    // Log throttle
+    logger->log_general(current_commands->get_throttle());
+    logger->log_general(" ");
+    
+    // Log rudder
+    logger->log_general(current_commands->get_rudder());
+    logger->log_general(" ");
+    
+    // Log status
+    logger->log_general(status);
+    logger->log_general(" ");
+    
+    // Log time to target
+    logger->log_general(timeToTarget);
+    logger->log_general("\n");
+}
+
+void update_history(bool target_set){
+    if (target_set && !target_reached) {
+        
+        // Save current location to history
+        emily_location_history[emily_location_history_pointer] = emily_location;
+        
+        // Update circular array pointer
+        emily_location_history_pointer = (emily_location_history_pointer + 1) % settings->EMILY_LOCATION_HISTORY_SIZE;
+    }
+}
+
+void show_selection(){
+    if (select_object && selection.width > 0 && selection.height > 0) {
+        Mat roi(original_frame, selection);
+        bitwise_not(roi, roi);
+    }
+}
+
+/**
+ * Track EMILY in video feed.
+ * 
+ */
+int main(int argc, char** argv) {
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Output video initialization
+    //////////////////////////////////////////////////////////////////////////// 
+
+    // Get FPS of the input video
+    double input_video_fps = get_input_video_fps();
+
+    // Inogeni for some reason cannot correctly estimate the FPS.
+    // Therefore we use FPS equal to 7 which is frequency of this algorithm.
+#ifdef INOGENI
+
+    input_video_fps = 7;
+
+#endif
+
+    // Get the size of input video
+    get_input_video_size();
 
     // Output video name. It is in format year_month_day_hour_minute_second.avi.
     time_t raw_time;
@@ -672,30 +533,14 @@ int main(int argc, char** argv) {
     strftime(output_file_name, 40, "output/%Y_%m_%d_%H_%M_%S", local_time);
     string output_file_name_string(output_file_name);
 
-    // Open output video file
-    VideoWriter output_video(output_file_name_string + ".avi", output_video_codec, input_video_fps, resized_video_size, true);
-
-    // Check if output video file was successfully opened
-    if (!output_video.isOpened()) {
-        cout << "Cannot open the output video file " << output_file_name_string + ".avi" << " for write." << endl;
-        return -1;
-    }
+    OutputVideo * output_video = new OutputVideo(input_video_fps, resized_video_size, output_file_name_string);
+    VideoWriter video_writer = output_video->get_video_writer();
 
     ////////////////////////////////////////////////////////////////////////////
     // Log
     ////////////////////////////////////////////////////////////////////////////
 
-    // Open log file
-    ofstream log_file;
-    log_file.open(output_file_name_string + ".txt");
-
-    // Open rudder log file
-    ofstream rudder_log_file;
-    rudder_log_file.open(output_file_name_string + "_rudder.txt");
-
-    // Open control log file
-    ofstream throttle_log_file;
-    throttle_log_file.open(output_file_name_string + "_throttle.txt");
+    Logger * logger = new Logger(output_file_name_string);
 
 #ifdef ANALYSIS
 
@@ -709,18 +554,7 @@ int main(int argc, char** argv) {
     // GUI
     ////////////////////////////////////////////////////////////////////////////
 
-    // Show main window including slide bars
-    create_main_window();
-
-#ifdef CAMSHIFT
-
-    // Histogram window
-    namedWindow("Histogram", 0);
-
-#endif
-
-    // Set mouse handler on main window to choose object of interest
-    setMouseCallback(MAIN_WINDOW, onMouse, 0);
+    UserInterface * user_interface = new UserInterface(* settings, resized_video_size);
 
     ////////////////////////////////////////////////////////////////////////////
     // Local variables
@@ -761,26 +595,13 @@ int main(int argc, char** argv) {
     // Initialization of communication
     ////////////////////////////////////////////////////////////////////////////
 
-    // Create socket descriptor. We want to use datagram UDP.
-    int socket_descriptor = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-
-    if (socket_descriptor < 0) {
-        cout << "Error creating socket descriptor." << endl;
-    }
-
-    // Create socket address
-    struct sockaddr_in socket_address;
-    socket_address.sin_family = AF_INET;
-    socket_address.sin_addr.s_addr = inet_addr(IP_ADDRESS);
-    socket_address.sin_port = htons(PORT);
+    Communication * communication = new Communication(settings->IP_ADDRESS, settings->PORT);
 
     ////////////////////////////////////////////////////////////////////////////
     // Initialization of camera distortion parameters
     ////////////////////////////////////////////////////////////////////////////
 
-    Mat undistortRectifyMap1;
-    Mat undistortRectifyMap2;
-    initUndistortRectifyMap(camera_intrinsic_matrix, camera_distortion_vector, Mat(), getOptimalNewCameraMatrix(camera_intrinsic_matrix, camera_distortion_vector, resized_video_size, 1, resized_video_size, 0), resized_video_size, CV_16SC2, undistortRectifyMap1, undistortRectifyMap2);
+    Undistort * undistort = new Undistort(* settings, resized_video_size);
 
     ////////////////////////////////////////////////////////////////////////////
     // Tracking
@@ -795,6 +616,7 @@ int main(int argc, char** argv) {
             // Read one frame
             video_capture >> original_frame;
 
+            // End if fram is empty
             if (original_frame.empty()) {
                 break;
             }
@@ -819,114 +641,24 @@ int main(int argc, char** argv) {
         }
 
         // Blur
-        GaussianBlur(original_frame, blured_frame, Size(blur_kernel_size, blur_kernel_size), 0, 0);
+        GaussianBlur(original_frame, blured_frame, Size(settings->blur_kernel_size, settings->blur_kernel_size), 0, 0);
 
         // Convert to HSV
         Mat HSV_frame;
         cvtColor(blured_frame, HSV_frame, COLOR_BGR2HSV);
 
         // Equalize on value (V)
-        vector<Mat> HSV_planes;
-        split(HSV_frame, HSV_planes);
-        equalizeHist(HSV_planes[2], HSV_planes[2]);
-        merge(HSV_planes, HSV_frame);
+        equalize(HSV_frame);
 
         ////////////////////////////////////////////////////////////////////////
         // Distortion and Inverse Perspective Warping
         ////////////////////////////////////////////////////////////////////////
 
         // Undistort camera
-        remap(original_frame, original_frame, undistortRectifyMap1, undistortRectifyMap2, INTER_LINEAR);
-        remap(HSV_frame, HSV_frame, undistortRectifyMap1, undistortRectifyMap2, INTER_LINEAR);
-
-        // Compute camera angle in radians
-        camera_angle_radians = ((double) camera_angle_degrees - 90.) * PI / 180;
+        undistort->undistort_camera(HSV_frame, original_frame);
 
         // Camera projection matrix
-        Mat camera_projection_matrix = (Mat_<double>(4, 3) <<
-                1, 0, 0,
-                0, 1, 0,
-                0, 0, 0,
-                0, 0, 1);
-
-        // Camera rotation matrix
-        Mat camera_rotation_matrix = (Mat_<double>(4, 4) <<
-                1, 0, 0, 0,
-                0, cos(camera_angle_radians), -sin(camera_angle_radians), 0,
-                0, sin(camera_angle_radians), cos(camera_angle_radians), 0,
-                0, 0, 0, 1);
-
-        // Camera translation matrix
-        Mat camera_translation_matrix = (Mat_<double>(4, 4) <<
-                1, 0, 0, 0,
-                0, 1, 0, 0,
-                0, 0, 1, 1,
-                0, 0, 0, 1);
-
-        // Camera intrinsic matrix
-        Mat camera_intrinsic_matrix_3D;
-        hconcat(camera_intrinsic_matrix, Mat(3, 1, CV_64F, double(0)), camera_intrinsic_matrix_3D);
-
-        // Overall camera transformation matrix
-        Mat camera_transformation = (camera_intrinsic_matrix_3D * (camera_translation_matrix * (camera_rotation_matrix * (camera_projection_matrix))));
-
-        // Overall camera transformation inverse
-        Mat camera_transformation_inverse;
-        invert(camera_transformation, camera_transformation_inverse);
-
-        // Get new boundaries of the frame after the application of the transformation
-
-        // Top left corner
-        Mat original_top_left = (Mat_<double>(3, 1) << 0, 0, 1);
-        Mat new_top_left = camera_transformation_inverse * original_top_left;
-        double new_top_left_x = new_top_left.at<double>(0, 0) / new_top_left.at<double>(2, 0);
-        double new_top_left_y = new_top_left.at<double>(1, 0) / new_top_left.at<double>(2, 0);
-
-        // Top right corner
-        Mat original_top_right = (Mat_<double>(3, 1) << resized_video_size.width, 0, 1);
-        Mat new_top_right = camera_transformation_inverse * original_top_right;
-        double new_top_right_x = new_top_right.at<double>(0, 0) / new_top_right.at<double>(2, 0);
-        double new_top_right_y = new_top_right.at<double>(1, 0) / new_top_right.at<double>(2, 0);
-
-        // Bottom left
-        Mat original_bottom_left = (Mat_<double>(3, 1) << 0, resized_video_size.height, 1);
-        Mat new_bottom_left = camera_transformation_inverse * original_bottom_left;
-        double new_bottom_left_x = new_bottom_left.at<double>(0, 0) / new_bottom_left.at<double>(2, 0);
-        double new_bottom_left_y = new_bottom_left.at<double>(1, 0) / new_bottom_left.at<double>(2, 0);
-
-        // Bottom right corner
-        Mat original_bottom_right = (Mat_<double>(3, 1) << resized_video_size.width, resized_video_size.height, 1);
-        Mat new_bottom_right = camera_transformation_inverse * original_bottom_right;
-        double new_bottom_right_x = new_bottom_right.at<double>(0, 0) / new_bottom_right.at<double>(2, 0);
-        double new_bottom_right_y = new_bottom_right.at<double>(1, 0) / new_bottom_right.at<double>(2, 0);
-
-        // Compute scale for each axis so that the image fits the screen
-        double scale_x = resized_video_size.width / abs(new_top_right_x - new_top_left_x);
-        double scale_y = resized_video_size.height / abs(new_bottom_left_y - new_top_left_y);
-
-        // Take overall scale as the largest scale
-        double scale_overall = scale_x > scale_y ? scale_x : scale_y;
-
-        // Scale matrix (scales the frame so that it fits the screen)
-        Mat scale = (Mat_<double>(3, 3) <<
-                scale_overall, 0, 0,
-                0, scale_overall, 0,
-                0, 0, 1);
-        invert(scale, scale);
-
-        // Translation matrix (translate the frame so that it starts at the bottom)
-        Mat translate = (Mat_<double>(3, 3) <<
-                1, 0, resized_video_size.width / 2,
-                0, 1, resized_video_size.height - (new_bottom_left_y * scale_y),
-                0, 0, 1);
-        invert(translate, translate);
-
-        // Redefine overall camera transformation matrix with scale and translation
-        camera_transformation = (camera_intrinsic_matrix_3D * (camera_translation_matrix * (camera_rotation_matrix * (camera_projection_matrix * (scale * (translate))))));
-
-        // Apply inverse perspective warp using the camera transformation matrix
-        warpPerspective(original_frame, original_frame, camera_transformation, resized_video_size, CV_INTER_LINEAR | CV_WARP_INVERSE_MAP | CV_WARP_FILL_OUTLIERS);
-        warpPerspective(HSV_frame, HSV_frame, camera_transformation, resized_video_size, CV_INTER_LINEAR | CV_WARP_INVERSE_MAP | CV_WARP_FILL_OUTLIERS);
+        undistort->undistort_perspective(HSV_frame, original_frame);
 
         ////////////////////////////////////////////////////////////////////////
         // Thresholding
@@ -1161,7 +893,7 @@ int main(int argc, char** argv) {
             if (object_selected) {
 
                 // Threshold on saturation and value, but not on hue
-                inRange(HSV_frame, Scalar(0, saturation_min, value_min), Scalar(180, saturation_max, value_max), saturation_value_threshold);
+                inRange(HSV_frame, Scalar(0, settings->saturation_min, settings->value_min), Scalar(180, settings->saturation_max, settings->value_max), saturation_value_threshold);
 
                 // Mix channels
                 int chanels[] = {0, 0};
@@ -1171,35 +903,9 @@ int main(int argc, char** argv) {
                 // Object does not have histogram yet, so create it
                 if (object_selected < 0) {
 
-                    // Region of interest
-                    Mat region_of_interest(hue, selection);
-
-                    // Region of interest mask
-                    Mat region_of_interest_mask(saturation_value_threshold, selection);
-
-                    // Calculate histogram of region of interest
-                    calcHist(&region_of_interest, 1, 0, region_of_interest_mask, histogram, 1, &histogram_size, &pointer_histogram_ranges);
-
-                    // Normalize histogram
-                    normalize(histogram, histogram, 0, 255, NORM_MINMAX);
-
-                    // Set object of interest to selection
-                    object_of_interest = selection;
-
-                    // Begin tracking object
-                    object_selected = 1;
-
-                    // Create histogram visualization
-                    histogram_image = Scalar::all(0);
-                    int bins_width = histogram_image.cols / histogram_size;
-                    Mat buffer(1, histogram_size, CV_8UC3);
-                    for (int i = 0; i < histogram_size; i++)
-                        buffer.at<Vec3b>(i) = Vec3b(saturate_cast<uchar> (i * 180. / histogram_size), 255, 255);
-                    cvtColor(buffer, buffer, COLOR_HSV2BGR);
-                    for (int i = 0; i < histogram_size; i++) {
-                        int val = saturate_cast<int> (histogram.at<float> (i) * histogram_image.rows / 255);
-                        rectangle(histogram_image, Point(i*bins_width, histogram_image.rows), Point((i + 1) * bins_width, histogram_image.rows - val), Scalar(buffer.at<Vec3b>(i)), -1, 8);
-                    }
+                    // Create histogram of region of interest
+                    create_histogram(object_of_interest, histogram_size, pointer_histogram_ranges, hue, saturation_value_threshold, histogram, histogram_image);
+                
                 }
 
                 // Calculate back projection
@@ -1226,13 +932,13 @@ int main(int argc, char** argv) {
 
                 // Draw bounding ellipse
                 if (tracking_box.size.height > 0 && tracking_box.size.width > 0) {
-                    ellipse(original_frame, tracking_box, LOCATION_COLOR, LOCATION_THICKNESS, LINE_AA);
+                    ellipse(original_frame, tracking_box, settings->LOCATION_COLOR, settings->LOCATION_THICKNESS, LINE_AA);
 
                     // Draw cross hairs
-                    draw_object_position(tracking_box.center.x, tracking_box.center.y, min(tracking_box.size.width, tracking_box.size.height) / 2, original_frame);
+                    user_interface->draw_position(tracking_box.center.x, tracking_box.center.y, min(tracking_box.size.width, tracking_box.size.height) / 2, original_frame);
 
                     // Draw pose
-                    draw_principal_axis(tracking_box);
+                    user_interface->draw_principal_axis(tracking_box, original_frame);
 
                     // Save EMILY location
                     emily_location = Point(tracking_box.center.x, tracking_box.center.y);
@@ -1247,13 +953,10 @@ int main(int argc, char** argv) {
         }
 
         // Show the selection
-        if (select_object && selection.width > 0 && selection.height > 0) {
-            Mat roi(original_frame, selection);
-            bitwise_not(roi, roi);
-        }
+        show_selection();
 
         // Show the histogram
-        imshow("Histogram", histogram_image);
+        user_interface->show_histogram(histogram_image);
 
         char character = (char) waitKey(10);
         if (character == 27)
@@ -1286,14 +989,7 @@ int main(int argc, char** argv) {
         // Compute heading
         ////////////////////////////////////////////////////////////////////////
 
-        if (target_set && !target_reached) {
-
-            // Save current location to history
-            emily_location_history[emily_location_history_pointer] = emily_location;
-
-            // Update circular array pointer
-            emily_location_history_pointer = (emily_location_history_pointer + 1) % EMILY_LOCATION_HISTORY_SIZE;
-        }
+        update_history(target_set);
 
         // Average of all the angles from points in history to current angle
         ////////////////////////////////////////////////////////////////////////
@@ -1363,45 +1059,9 @@ int main(int argc, char** argv) {
             // Fitting a polynomial curve
             ////////////////////////////////////////////////////////////////////////
 
-            // Initialize curve
-            vector<Point> path_polynomial_approximation;
-
-            // Sort EMILY location history chronologically
-            Point emily_location_history_sorted[EMILY_LOCATION_HISTORY_SIZE];
-            for (int i = 0; i < EMILY_LOCATION_HISTORY_SIZE; i++) {
-                emily_location_history_sorted[i] = emily_location_history[(emily_location_history_pointer + i) % EMILY_LOCATION_HISTORY_SIZE];
-            }
-
-            // Initialize input vector (approxPolyDP takes only vectors and not arrays)
-            vector<Point> input_points(emily_location_history_sorted, emily_location_history_sorted + sizeof emily_location_history_sorted / sizeof emily_location_history_sorted[0]);
-
-            // Approximate location history with a polynomial curve
-            approxPolyDP(input_points, path_polynomial_approximation, 4, false);
-
-            // Draw polynomial curve
-            for (int i = 0; i < path_polynomial_approximation.size() - 1; i++) {
-                line(original_frame, path_polynomial_approximation[i], path_polynomial_approximation[i + 1], Scalar(255, 0, 255), HEADING_LINE_THICKNESS, CV_AA);
-            }
-
-            // Difference in x axis
-            int delta_x_curve = path_polynomial_approximation[path_polynomial_approximation.size() - 1].x - path_polynomial_approximation[path_polynomial_approximation.size() - 2].x;
-
-            // Difference in y axis
-            int delta_Y_curve = path_polynomial_approximation[path_polynomial_approximation.size() - 1].y - path_polynomial_approximation[path_polynomial_approximation.size() - 2].y;
-
-            // Angle in degrees
-            double emily_angle_polynomial_approximation = atan2(delta_Y_curve, delta_x_curve) * (180 / M_PI);
-
-            // Compute heading point
-            Point heading_point_polynomial_approximation;
-            heading_point_polynomial_approximation.x = (int) round(path_polynomial_approximation[path_polynomial_approximation.size() - 1].x + HEADING_LINE_LENGTH * cos(emily_angle_polynomial_approximation * CV_PI / 180.0));
-            heading_point_polynomial_approximation.y = (int) round(path_polynomial_approximation[path_polynomial_approximation.size() - 1].y + HEADING_LINE_LENGTH * sin(emily_angle_polynomial_approximation * CV_PI / 180.0));
-
-            // Draw line between current location and heading point
-            line(original_frame, emily_location, heading_point_polynomial_approximation, Scalar(255, 255, 0), HEADING_LINE_THICKNESS, 8, 0);
-
-            // Use curve polynomial tangent angle
-            emily_angle = emily_angle_polynomial_approximation;
+            // Get orientation of EMILY
+            get_orientation();
+            
         }
 
         ////////////////////////////////////////////////////////////////////////
@@ -1413,7 +1073,7 @@ int main(int argc, char** argv) {
 
         //        drawKeypoints(original_frame, keypoints, original_frame, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
         //        
-        //        imshow("Simple Blob Detector", original_frame);
+        //        userInterface->show_main(original_frame);
 
         // Contours
         ////////////////////////////////////////////////////////////////////////
@@ -1422,60 +1082,26 @@ int main(int argc, char** argv) {
         //            drawContours(original_frame, contours, contour, Scalar(255, 0, 0), CV_FILLED, 8, hierarchy);
         //        }
         //        
-        //        imshow("Countours", original_frame);
+        //        userInterface->show_main(original_frame);
 
         // Threshold
         ////////////////////////////////////////////////////////////////////////
 
-        //        imshow("Threshold", threshold);
+        //        userInterface->show_main(threshold);
 
         // Original image
         ////////////////////////////////////////////////////////////////////////
 
-        //        imshow("Original image", original_frame);
+        //        userInterface->show_main(original_frame);
 
         // Main Window
         ////////////////////////////////////////////////////////////////////////
 
         // Show target location
-        if (target_location.x != 0 && target_location.y != 0) {
-            circle(original_frame, target_location, TARGET_RADIUS - 1, TARGET_COLOR, 1, 8, 0);
-            line(original_frame, Point(target_location.x - (TARGET_RADIUS / 2), target_location.y + (TARGET_RADIUS / 2)), Point(target_location.x + (TARGET_RADIUS / 2), target_location.y - (TARGET_RADIUS / 2)), TARGET_COLOR, 1, 8, 0);
-            line(original_frame, Point(target_location.x - (TARGET_RADIUS / 2), target_location.y - (TARGET_RADIUS / 2)), Point(target_location.x + (TARGET_RADIUS / 2), target_location.y + (TARGET_RADIUS / 2)), TARGET_COLOR, 1, 8, 0);
-
-            // Draw target acceptance radius
-            circle(original_frame, target_location, target_radius, TARGET_COLOR, 1, 8, 0);
-        }
+        user_interface->draw_target(original_frame, target_location);
 
         // Get status as a string message
-        String stringStatus;
-
-        switch (status) {
-            case 0:
-                stringStatus = "Initialization";
-                break;
-            case 1:
-                stringStatus = "Select EMILY and target.";
-                break;
-            case 2:
-                stringStatus = "Target set. Getting orientation.";
-                break;
-            case 3:
-                stringStatus = "Target set. Going to target.";
-                break;
-            case 4:
-
-                // Covert time to target to string
-                ostringstream stringStream;
-                stringStream << timeToTarget;
-                std::string timeToTargetString = stringStream.str();
-
-                stringStatus = "Target reached in " + timeToTargetString + " s";
-                break;
-        }
-
-        // Print status
-        putText(original_frame, stringStatus, Point(50, 50), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 255), 2);
+        user_interface->print_status(original_frame, status, timeToTarget);
 
 #ifndef CAMSHIFT        
 
@@ -1533,17 +1159,15 @@ int main(int argc, char** argv) {
 #endif
 
         // Show output frame in the main window
-        imshow(MAIN_WINDOW, output);
-
-        // Set main window to full screen
-        setWindowProperty(MAIN_WINDOW, CV_WND_PROP_FULLSCREEN, CV_WINDOW_FULLSCREEN);
+        user_interface->show_main(output);
 
         ////////////////////////////////////////////////////////////////////////
         // Video output
         ////////////////////////////////////////////////////////////////////////
 
         // Write the frame to the output video
-        output_video << original_frame;
+        video_writer << original_frame;
+        //video_writer << threshold_color;
 
         ////////////////////////////////////////////////////////////////////////
         // Quantitative analysis
@@ -1577,13 +1201,13 @@ int main(int argc, char** argv) {
         // Control
         ////////////////////////////////////////////////////////////////////////
 
-        commands current_commands;
+        Command * current_commands = new Command();
 
         // If target was reached, clear the history
         if (target_reached) {
 
             // Set each element in history to 0
-            for (int i = 0; i < EMILY_LOCATION_HISTORY_SIZE; i++) {
+            for (int i = 0; i < settings->EMILY_LOCATION_HISTORY_SIZE; i++) {
                 emily_location_history[i] = Point(0, 0);
             }
 
@@ -1608,14 +1232,13 @@ int main(int argc, char** argv) {
 
         bool heading_known = emily_location.x != 0 && emily_location.y != 0 && emily_location_history[emily_location_history_pointer].x != 0 && emily_location_history[emily_location_history_pointer].y != 0;
 
-
         // If the object is selected, begin control
         if (object_selected && target_set && !target_reached) {
 
             if (!heading_known) {
 
-                current_commands.throttle = 0.2;
-                current_commands.rudder = 0;
+                current_commands->set_throttle(0.2);
+                current_commands->set_rudder(0);
 
                 // Set status
                 status = 2;
@@ -1626,7 +1249,7 @@ int main(int argc, char** argv) {
             } else {
 
                 // Get rudder and throttle
-                current_commands = get_control_commands(emily_location.x, emily_location.y, emily_angle, target_location.x, target_location.y);
+                current_commands = control->get_control_commands(emily_location.x, emily_location.y, emily_angle, target_location.x, target_location.y);
 
                 // Set status
                 status = 3;
@@ -1638,8 +1261,8 @@ int main(int argc, char** argv) {
 
         } else {
 
-            current_commands.throttle = 0;
-            current_commands.rudder = 0;
+            current_commands->set_throttle(0);
+            current_commands->set_rudder(0);
 
             if (!target_reached) {
                 // Set status
@@ -1648,107 +1271,29 @@ int main(int argc, char** argv) {
 
         }
 
-        // Debugging
-        cout << "Throttle: " << current_commands.throttle << " Rudder: " << current_commands.rudder << endl;
-
-        // Log throttle
-        throttle_log_file << current_commands.throttle << endl;
-
-        // Log rudder
-        rudder_log_file << current_commands.rudder << endl;
-
         ////////////////////////////////////////////////////////////////////////
         // Communication
         ////////////////////////////////////////////////////////////////////////
 
-        // Pack datagram
-        double package[2];
-        package[0] = current_commands.throttle;
-        package[1] = current_commands.rudder;
-
-        // Send throttle
-        sendto(socket_descriptor, &package, 2 * sizeof (double), 0, (struct sockaddr *) &socket_address, sizeof (socket_address));
+        communication->send_command(* current_commands);
 
         ////////////////////////////////////////////////////////////////////////
         // Log output
         ////////////////////////////////////////////////////////////////////////
+        
+        // Debugging
+        //cout << "Throttle: " << current_commands->get_throttle() << " Rudder: " << current_commands->get_rudder() << endl;
 
-        // Get current time
-        time_t raw_time;
-        time(&raw_time);
-        struct tm * local_time;
-        local_time = localtime(&raw_time);
-        char current_time[40];
-        strftime(current_time, 40, "%Y%m%d%H%M%S", local_time);
-
-        // Log time
-        log_file << current_time;
-        log_file << " ";
-
-        // Log EMILY location
-        log_file << emily_location.x;
-        log_file << " ";
-        log_file << emily_location.y;
-        log_file << " ";
-
-        // Log EMILY pose line segment
-        log_file << emily_pose_point_1.x;
-        log_file << " ";
-        log_file << emily_pose_point_1.y;
-        log_file << " ";
-        log_file << emily_pose_point_2.x;
-        log_file << " ";
-        log_file << emily_pose_point_2.y;
-        log_file << " ";
-
-        // Log target location
-        log_file << target_location.x;
-        log_file << " ";
-        log_file << target_location.y;
-        log_file << " ";
-
-        // Log EMILY angle
-        log_file << emily_angle;
-        log_file << " ";
-
-        // Log distance to target
-        log_file << current_commands.distance_to_target;
-        log_file << " ";
-
-        // Log error angle to target
-        log_file << current_commands.angle_error_to_target;
-        log_file << " ";
-
-        // Log throttle
-        log_file << current_commands.throttle;
-        log_file << " ";
-
-        // Log rudder
-        log_file << current_commands.rudder;
-        log_file << " ";
-
-        // Log status
-        log_file << status;
-        log_file << " ";
-
-        // Log time to target
-        log_file << timeToTarget;
-        log_file << "\n";
+        // Log the data
+        create_log_entry(logger, current_commands);
 
     }
 
-    // Stop EMILY
-    double package[2];
-    package[0] = 0;
-    package[1] = 0;
-    sendto(socket_descriptor, &package, 2 * sizeof (double), 0, (struct sockaddr *) &socket_address, sizeof (socket_address));
-
-    // Close log
-    log_file.close();
-    rudder_log_file.close();
-
-    // Close socket
-    close(socket_descriptor);
+    // Close logs
+    delete logger;
+    
+    // Stop EMILY and close communication
+    delete communication;
 
     // Announce that the processing was finished
     cout << "Processing finished!" << endl;
