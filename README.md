@@ -24,6 +24,7 @@ Press escape key to exit.
 2. Install OpenCV with ffmpeg support
 
     brew tap homebrew/science
+
     brew install opencv3 --with-contrib --with-ffmpeg --with-tbb --with-qt5
 
 3. Link OpenCV
