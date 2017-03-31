@@ -18,7 +18,7 @@
 #include <iostream>
 #include <fstream>
 #include "opencv2/opencv.hpp"
-#include "settings.hpp"
+#include "Settings.hpp"
 #include "Control.hpp"
 #include "OutputVideo.hpp"
 #include "Logger.hpp"
