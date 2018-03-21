@@ -23,11 +23,11 @@ public:
 
     // Camera index (sometimes the external USB camera is on 0 and sometimes on 1)
     // The index of the camera have to be checked manually
-    int video_capture_source = 0;
-
-    // Saturation and value limits
-    int saturation_min = 120;
-    int value_min = 10;
+//    int video_capture_source = 0;
+//
+//    // Saturation and value limits
+//    int saturation_min = 120;
+//    int value_min = 10;
 
     // Calibration Data
     Mat camera_intrinsic_matrix = (Mat_<double>(3, 3) <<
@@ -70,15 +70,15 @@ public:
     //int value_min = 100;
 
     // Lake Bryan AI Robotics class final 2016 05 10
-    //string video_capture_source = "input/2016_05_10_lake_bryan.mov";
-    //int saturation_min = 10;
-    //int value_min = 10;
+    string video_capture_source = "input/2016_05_10_lake_bryan.mov";
+    int saturation_min = 30;
+    int value_min = 10;
 
     // Lab 2016 07 05
     //string video_capture_source = "input/2016_07_05_lab.avi";
     //int saturation_min = 130;
     //int value_min = 10;
-
+    
     ////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////
     // Algorithm Variable parameters
@@ -186,7 +186,9 @@ public:
     // Input will be resized to this number of lines to speed up the processing
     //const int PROCESSING_VIDEO_HEIGHT_LIMIT = 640; // MOD webcam resolution
     // Higher resolution will be better if EMILY is in the distance
-    const int PROCESSING_VIDEO_HEIGHT_LIMIT = 1200;
+    //const int PROCESSING_VIDEO_HEIGHT_LIMIT = 1200;
+    // TODO change the maximum video height
+    const int PROCESSING_VIDEO_HEIGHT_LIMIT = 2160;
 
     // Blob size restrictions. Blobs outside of this range will be ignored.
     const int MIN_BLOB_AREA = 1 * 1;

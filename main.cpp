@@ -607,6 +607,10 @@ int main(int argc, char** argv) {
     // Tracking
     ////////////////////////////////////////////////////////////////////////////
 
+//    // Load first frame
+//    Mat first;
+//    video_capture >> first;
+    
     // Iterate over each frame from the video input and wait between iterations.
     while (waitKey(1) != 27) {
 
@@ -615,8 +619,11 @@ int main(int argc, char** argv) {
 
             // Read one frame
             video_capture >> original_frame;
+            
+//            // Use only first frame
+//            first.copyTo(original_frame);
 
-            // End if fram is empty
+            // End if frame is empty
             if (original_frame.empty()) {
                 break;
             }
@@ -636,7 +643,8 @@ int main(int argc, char** argv) {
         if (resize_video) {
 
             // Resize the input
-            resize(original_frame, original_frame, resized_video_size, 0, 0, INTER_LANCZOS4);
+            // TODO enable resize
+            //resize(original_frame, original_frame, resized_video_size, 0, 0, INTER_LANCZOS4);
 
         }
 
@@ -655,10 +663,12 @@ int main(int argc, char** argv) {
         ////////////////////////////////////////////////////////////////////////
 
         // Undistort camera
-        undistort->undistort_camera(HSV_frame, original_frame);
+        // TODO enable undistort
+        //undistort->undistort_camera(HSV_frame, original_frame);
 
         // Camera projection matrix
-        undistort->undistort_perspective(HSV_frame, original_frame);
+        // TODO change to automatic undistort
+        undistort->undistort_perspective_manual(HSV_frame, original_frame);
 
         ////////////////////////////////////////////////////////////////////////
         // Thresholding

@@ -21,6 +21,7 @@ public:
     
     void undistort_camera(Mat&, Mat&);
     void undistort_perspective(Mat&, Mat&);
+    void undistort_perspective_manual(Mat&, Mat&);
     
 private:
     

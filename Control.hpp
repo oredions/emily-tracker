@@ -32,10 +32,12 @@ private:
     void get_target_vector(double xe, double ye, double xv, double yv, double& target_vector);
 
     // Turning throttle
-    const double turning_throttle = 0.3;
+    //const double turning_throttle = 0.3;
+    const double turning_throttle = 0.4;
 
     // Cruising throttle
-    const double cruising_throttle = 0.6;
+    //const double cruising_throttle = 0.6;
+    const double cruising_throttle = 0.7;
 
     // Slowing distance as multiple of target radius. When this threshold is reached, EMILY will start linearly slowing down.
     int slowing_distance = 3;
