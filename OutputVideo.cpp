@@ -22,12 +22,17 @@ OutputVideo::OutputVideo(const OutputVideo& orig) {
 OutputVideo::~OutputVideo() {
 }
 
+/**
+ * Initialize video writer.
+ * 
+ * @return 
+ */
 VideoWriter OutputVideo::get_video_writer() {
     
     // Codec used to output the video
     // This is higher size: int outputVideoCodec = CV_FOURCC('W','R','L','E');
     // This works navite on Mac: int outputVideoCodec = CV_FOURCC('m', 'p', '4', 'v');
-    // This works with ffmpeg
+    // This works with ffmpeg:
     int output_video_codec = CV_FOURCC('D', 'I', 'V', 'X');
 
     // Open output video file

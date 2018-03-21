@@ -4,8 +4,9 @@
  * @date    07/01/2016
  * @version 2.0
  *  
- * This program is used to track EMILY unmanned surface vehicle in video feed
- * and navigate it to the given target.
+ * This project uses the video from a small unmanned aerial system to
+ * autonomously navigate an unmanned surface vehicle covered in a flotation
+ * jacket to reach drowning victims.
  *
  */
 
@@ -146,6 +147,13 @@ int status = 0;
 time_t startTarget, endTarget;
 double timeToTarget = 0;
 
+/**
+ * Get size of the give rectangle. The size is measured as distance of midpoints
+ * of shorter sides.
+ * 
+ * @param rectangle
+ * @return 
+ */
 double get_size(RotatedRect rectangle) {
 
     // Get points of bounding rectangle
@@ -178,15 +186,15 @@ double get_size(RotatedRect rectangle) {
 }
 
 /**
- * Unused.
+ * Draw axis give two points. This method is currently unused.
  * 
  * @param img
- * @param p
- * @param q
+ * @param p Point 1
+ * @param q Point 2
  * @param colour
  * @param scale
  */
-void drawAxis(Mat& img, Point p, Point q, Scalar colour, const float scale = 0.2) {
+void draw_axis(Mat& img, Point p, Point q, Scalar colour, const float scale = 0.2) {
     double angle;
     double hypotenuse;
     angle = atan2((double) p.y - q.y, (double) p.x - q.x); // angle in radians
@@ -207,13 +215,14 @@ void drawAxis(Mat& img, Point p, Point q, Scalar colour, const float scale = 0.2
 }
 
 /**
- * Unused.
+ * Get orientation given location history. This method is currently unused.
  * 
  * @param pts
  * @param img
  * @return 
  */
-double getOrientation(const vector<Point> &pts, Mat &img) {
+double get_orientation(const vector<Point> &pts, Mat &img) {
+    
     //Construct a buffer used by the pca analysis
     int sz = static_cast<int> (pts.size());
     Mat data_pts = Mat(sz, 2, CV_64FC1);
@@ -221,11 +230,14 @@ double getOrientation(const vector<Point> &pts, Mat &img) {
         data_pts.at<double>(i, 0) = pts[i].x;
         data_pts.at<double>(i, 1) = pts[i].y;
     }
+    
     //Perform PCA analysis
     PCA pca_analysis(data_pts, Mat(), CV_PCA_DATA_AS_ROW);
+    
     //Store the center of the object
     Point cntr = Point(static_cast<int> (pca_analysis.mean.at<double>(0, 0)),
             static_cast<int> (pca_analysis.mean.at<double>(0, 1)));
+    
     //Store the eigenvalues and eigenvectors
     vector<Point2d> eigen_vecs(2);
     vector<double> eigen_val(2);
@@ -234,16 +246,23 @@ double getOrientation(const vector<Point> &pts, Mat &img) {
                 pca_analysis.eigenvectors.at<double>(i, 1));
         eigen_val[i] = pca_analysis.eigenvalues.at<double>(0, i);
     }
+    
     // Draw the principal components
     circle(img, cntr, 3, Scalar(255, 0, 255), 2);
     Point p1 = cntr + 0.02 * Point(static_cast<int> (eigen_vecs[0].x * eigen_val[0]), static_cast<int> (eigen_vecs[0].y * eigen_val[0]));
     Point p2 = cntr - 0.02 * Point(static_cast<int> (eigen_vecs[1].x * eigen_val[1]), static_cast<int> (eigen_vecs[1].y * eigen_val[1]));
-    drawAxis(img, cntr, p1, Scalar(0, 255, 0), 1);
-    drawAxis(img, cntr, p2, Scalar(255, 255, 0), 5);
+    draw_axis(img, cntr, p1, Scalar(0, 255, 0), 1);
+    draw_axis(img, cntr, p2, Scalar(255, 255, 0), 5);
     double angle = atan2(eigen_vecs[0].y, eigen_vecs[0].x); // orientation in radians
+    
     return angle;
 }
 
+/**
+ * Get frame per seconds of the input video feed.
+ * 
+ * @return Frame per seconds
+ */
 double get_input_video_fps() {
     double input_video_fps = video_capture.get(CV_CAP_PROP_FPS);
 
@@ -286,8 +305,11 @@ double get_input_video_fps() {
     return input_video_fps;
 }
 
+/**
+ * Get the resolution of the input video feed.
+ */
 void get_input_video_size() {
-    
+
     Size input_video_size(video_capture.get(CV_CAP_PROP_FRAME_WIDTH), video_capture.get(CV_CAP_PROP_FRAME_HEIGHT));
 
     // If the input video exceeds processing video size limits, we will have to resize it
@@ -324,33 +346,49 @@ void get_input_video_size() {
     }
 }
 
-void equalize(Mat& HSV_frame){
+/**
+ * Equalize histogram of the given frame.
+ * 
+ * @param HSV_frame
+ */
+void equalize(Mat& HSV_frame) {
     vector<Mat> HSV_planes;
     split(HSV_frame, HSV_planes);
     equalizeHist(HSV_planes[2], HSV_planes[2]);
     merge(HSV_planes, HSV_frame);
 }
 
-void create_histogram(Rect& object_of_interest, int& histogram_size, const float*& pointer_histogram_ranges, Mat& hue, Mat& saturation_value_threshold, Mat& histogram, Mat& histogram_image){
-    
+/**
+ * Create histogram for the area of interest.
+ * 
+ * @param object_of_interest
+ * @param histogram_size
+ * @param pointer_histogram_ranges
+ * @param hue
+ * @param saturation_value_threshold
+ * @param histogram
+ * @param histogram_image
+ */
+void create_histogram(Rect& object_of_interest, int& histogram_size, const float*& pointer_histogram_ranges, Mat& hue, Mat& saturation_value_threshold, Mat& histogram, Mat& histogram_image) {
+
     // Region of interest
     Mat region_of_interest(hue, selection);
-    
+
     // Region of interest mask
     Mat region_of_interest_mask(saturation_value_threshold, selection);
-    
+
     // Calculate histogram of region of interest
     calcHist(&region_of_interest, 1, 0, region_of_interest_mask, histogram, 1, &histogram_size, &pointer_histogram_ranges);
-    
+
     // Normalize histogram
     normalize(histogram, histogram, 0, 255, NORM_MINMAX);
-    
+
     // Set object of interest to selection
     object_of_interest = selection;
-    
+
     // Begin tracking object
     object_selected = 1;
-    
+
     // Create histogram visualization
     histogram_image = Scalar::all(0);
     int bins_width = histogram_image.cols / histogram_size;
@@ -364,22 +402,25 @@ void create_histogram(Rect& object_of_interest, int& histogram_size, const float
     }
 }
 
-void get_orientation(){
-    
+/**
+ * Get orientation of the USV based on its location history.
+ */
+void get_orientation() {
+
     // Initialize curve
     vector<Point> path_polynomial_approximation;
-    
+
     // Sort EMILY location history chronologically
     Point * emily_location_history_sorted = new Point[settings->EMILY_LOCATION_HISTORY_SIZE];
-    
+
     // Initialize input vector (approxPolyDP takes only vectors and not arrays)
     vector<Point> input_points;
-    
+
     for (int i = 0; i < settings->EMILY_LOCATION_HISTORY_SIZE; i++) {
         emily_location_history_sorted[i] = emily_location_history[(emily_location_history_pointer + i) % settings->EMILY_LOCATION_HISTORY_SIZE];
         input_points.push_back(emily_location_history_sorted[i]);
     }
-    
+
     // Approximate location history with a polynomial curve
     approxPolyDP(input_points, path_polynomial_approximation, 4, false);
 
@@ -387,38 +428,44 @@ void get_orientation(){
     for (int i = 0; i < path_polynomial_approximation.size() - 1; i++) {
         line(original_frame, path_polynomial_approximation[i], path_polynomial_approximation[i + 1], Scalar(255, 0, 255), settings->HEADING_LINE_THICKNESS, CV_AA);
     }
-    
+
     // Difference in x axis
     int delta_x_curve = path_polynomial_approximation[path_polynomial_approximation.size() - 1].x - path_polynomial_approximation[path_polynomial_approximation.size() - 2].x;
-    
+
     // Difference in y axis
     int delta_Y_curve = path_polynomial_approximation[path_polynomial_approximation.size() - 1].y - path_polynomial_approximation[path_polynomial_approximation.size() - 2].y;
-    
+
     // Angle in degrees
     double emily_angle_polynomial_approximation = atan2(delta_Y_curve, delta_x_curve) * (180 / M_PI);
-    
+
     // Compute heading point
     Point heading_point_polynomial_approximation;
     heading_point_polynomial_approximation.x = (int) round(path_polynomial_approximation[path_polynomial_approximation.size() - 1].x + settings->HEADING_LINE_LENGTH * cos(emily_angle_polynomial_approximation * CV_PI / 180.0));
     heading_point_polynomial_approximation.y = (int) round(path_polynomial_approximation[path_polynomial_approximation.size() - 1].y + settings->HEADING_LINE_LENGTH * sin(emily_angle_polynomial_approximation * CV_PI / 180.0));
-    
+
     // Draw line between current location and heading point
     line(original_frame, emily_location, heading_point_polynomial_approximation, Scalar(255, 255, 0), settings->HEADING_LINE_THICKNESS, 8, 0);
-    
+
     // Use curve polynomial tangent angle
     emily_angle = emily_angle_polynomial_approximation;
 }
 
-void create_log_entry(Logger* logger, Command* current_commands){
-    
+/**
+ * Create one log entry with current system status.
+ * 
+ * @param logger
+ * @param current_commands
+ */
+void create_log_entry(Logger* logger, Command* current_commands) {
+
     // Log throttle
     logger->log_throttle(current_commands->get_throttle());
     logger->log_throttle("\n");
-    
+
     // Log rudder
     logger->log_rudder(current_commands->get_rudder());
     logger->log_rudder("\n");
-    
+
     // Get current time
     time_t raw_time;
     time(&raw_time);
@@ -426,17 +473,17 @@ void create_log_entry(Logger* logger, Command* current_commands){
     local_time = localtime(&raw_time);
     char current_time[40];
     strftime(current_time, 40, "%Y%m%d%H%M%S", local_time);
-    
+
     // Log time
     logger->log_general(current_time);
     logger->log_general(" ");
-    
+
     // Log EMILY location
     logger->log_general(emily_location.x);
     logger->log_general(" ");
     logger->log_general(emily_location.y);
     logger->log_general(" ");
-    
+
     // Log EMILY pose line segment
     logger->log_general(emily_pose_point_1.x);
     logger->log_general(" ");
@@ -446,54 +493,62 @@ void create_log_entry(Logger* logger, Command* current_commands){
     logger->log_general(" ");
     logger->log_general(emily_pose_point_2.y);
     logger->log_general(" ");
-    
+
     // Log target location
     logger->log_general(target_location.x);
     logger->log_general(" ");
     logger->log_general(target_location.y);
     logger->log_general(" ");
-    
+
     // Log EMILY angle
     logger->log_general(emily_angle);
     logger->log_general(" ");
-    
+
     // Log distance to target
     logger->log_general(current_commands->get_distance_to_target());
     logger->log_general(" ");
-    
+
     // Log error angle to target
     logger->log_general(current_commands->get_angle_error_to_target());
     logger->log_general(" ");
-    
+
     // Log throttle
     logger->log_general(current_commands->get_throttle());
     logger->log_general(" ");
-    
+
     // Log rudder
     logger->log_general(current_commands->get_rudder());
     logger->log_general(" ");
-    
+
     // Log status
     logger->log_general(status);
     logger->log_general(" ");
-    
+
     // Log time to target
     logger->log_general(timeToTarget);
     logger->log_general("\n");
 }
 
-void update_history(bool target_set){
+/**
+ * Update USV location history.
+ * 
+ * @param target_set
+ */
+void update_history(bool target_set) {
     if (target_set && !target_reached) {
-        
+
         // Save current location to history
         emily_location_history[emily_location_history_pointer] = emily_location;
-        
+
         // Update circular array pointer
         emily_location_history_pointer = (emily_location_history_pointer + 1) % settings->EMILY_LOCATION_HISTORY_SIZE;
     }
 }
 
-void show_selection(){
+/**
+ * Show current object of interest selection in the GUI.
+ */
+void show_selection() {
     if (select_object && selection.width > 0 && selection.height > 0) {
         Mat roi(original_frame, selection);
         bitwise_not(roi, roi);
@@ -501,8 +556,7 @@ void show_selection(){
 }
 
 /**
- * Track EMILY in video feed.
- * 
+ * Autonomously navigate the USV based on the UAV video feed to reach the target.
  */
 int main(int argc, char** argv) {
 
@@ -514,7 +568,7 @@ int main(int argc, char** argv) {
     double input_video_fps = get_input_video_fps();
 
     // Inogeni for some reason cannot correctly estimate the FPS.
-    // Therefore we use FPS equal to 7 which is frequency of this algorithm.
+    // Therefore we use FPS equal to 7 which is approximate frequency of this algorithm.
 #ifdef INOGENI
 
     input_video_fps = 7;
@@ -607,10 +661,10 @@ int main(int argc, char** argv) {
     // Tracking
     ////////////////////////////////////////////////////////////////////////////
 
-//    // Load first frame
-//    Mat first;
-//    video_capture >> first;
-    
+    //    // Load first frame
+    //    Mat first;
+    //    video_capture >> first;
+
     // Iterate over each frame from the video input and wait between iterations.
     while (waitKey(1) != 27) {
 
@@ -619,9 +673,9 @@ int main(int argc, char** argv) {
 
             // Read one frame
             video_capture >> original_frame;
-            
-//            // Use only first frame
-//            first.copyTo(original_frame);
+
+            //            // Use only first frame
+            //            first.copyTo(original_frame);
 
             // End if frame is empty
             if (original_frame.empty()) {
@@ -648,10 +702,10 @@ int main(int argc, char** argv) {
 
         }
 
-        // Blur
+        // Apply Gaussian blur filter
         GaussianBlur(original_frame, blured_frame, Size(settings->blur_kernel_size, settings->blur_kernel_size), 0, 0);
 
-        // Convert to HSV
+        // Convert to HSV color space
         Mat HSV_frame;
         cvtColor(blured_frame, HSV_frame, COLOR_BGR2HSV);
 
@@ -915,7 +969,7 @@ int main(int argc, char** argv) {
 
                     // Create histogram of region of interest
                     create_histogram(object_of_interest, histogram_size, pointer_histogram_ranges, hue, saturation_value_threshold, histogram, histogram_image);
-                
+
                 }
 
                 // Calculate back projection
@@ -1071,7 +1125,7 @@ int main(int argc, char** argv) {
 
             // Get orientation of EMILY
             get_orientation();
-            
+
         }
 
         ////////////////////////////////////////////////////////////////////////
@@ -1163,6 +1217,7 @@ int main(int argc, char** argv) {
 
 #else
 
+        // Copy the frame to output
         Mat output;
         original_frame.copyTo(output);
 
@@ -1211,6 +1266,7 @@ int main(int argc, char** argv) {
         // Control
         ////////////////////////////////////////////////////////////////////////
 
+        // Initialize current commands object
         Command * current_commands = new Command();
 
         // If target was reached, clear the history
@@ -1240,6 +1296,7 @@ int main(int argc, char** argv) {
 
         }
 
+        // Is the current heading known
         bool heading_known = emily_location.x != 0 && emily_location.y != 0 && emily_location_history[emily_location_history_pointer].x != 0 && emily_location_history[emily_location_history_pointer].y != 0;
 
         // If the object is selected, begin control
@@ -1271,12 +1328,15 @@ int main(int argc, char** argv) {
 
         } else {
 
+            // Stop USV
             current_commands->set_throttle(0);
             current_commands->set_rudder(0);
 
             if (!target_reached) {
+                
                 // Set status
                 status = 1;
+                
             }
 
         }
@@ -1290,7 +1350,7 @@ int main(int argc, char** argv) {
         ////////////////////////////////////////////////////////////////////////
         // Log output
         ////////////////////////////////////////////////////////////////////////
-        
+
         // Debugging
         //cout << "Throttle: " << current_commands->get_throttle() << " Rudder: " << current_commands->get_rudder() << endl;
 
@@ -1301,7 +1361,7 @@ int main(int argc, char** argv) {
 
     // Close logs
     delete logger;
-    
+
     // Stop EMILY and close communication
     delete communication;
 

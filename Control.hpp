@@ -20,7 +20,7 @@ public:
     Control(const Control& orig);
     virtual ~Control();
 
-    Command * get_control_commands(int, int, double, int, int);
+    Command * get_control_commands(double, double, double, double, double);
 
 private:
 
@@ -33,10 +33,12 @@ private:
 
     // Turning throttle
     //const double turning_throttle = 0.3;
+    // This makes USV faster:
     const double turning_throttle = 0.4;
 
     // Cruising throttle
     //const double cruising_throttle = 0.6;
+    // This makes USV faster:
     const double cruising_throttle = 0.7;
 
     // Slowing distance as multiple of target radius. When this threshold is reached, EMILY will start linearly slowing down.

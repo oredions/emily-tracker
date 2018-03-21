@@ -1,0 +1,47 @@
+[
+{
+  "directory": "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker",
+  "command": "\"/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/nbproject/private/tools/localhost/GNU/g++\"    -isystem /usr/local/include -isystem /usr/local/include/opencv  -g3 -gdwarf-2   -std=gnu++11 -o CMakeFiles/EMILYTracker.dir/Command.cpp.o -c \"/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/Command.cpp\"",
+  "file": "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/Command.cpp"
+},
+{
+  "directory": "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker",
+  "command": "\"/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/nbproject/private/tools/localhost/GNU/g++\"    -isystem /usr/local/include -isystem /usr/local/include/opencv  -g3 -gdwarf-2   -std=gnu++11 -o CMakeFiles/EMILYTracker.dir/Communication.cpp.o -c \"/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/Communication.cpp\"",
+  "file": "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/Communication.cpp"
+},
+{
+  "directory": "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker",
+  "command": "\"/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/nbproject/private/tools/localhost/GNU/g++\"    -isystem /usr/local/include -isystem /usr/local/include/opencv  -g3 -gdwarf-2   -std=gnu++11 -o CMakeFiles/EMILYTracker.dir/Control.cpp.o -c \"/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/Control.cpp\"",
+  "file": "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/Control.cpp"
+},
+{
+  "directory": "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker",
+  "command": "\"/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/nbproject/private/tools/localhost/GNU/g++\"    -isystem /usr/local/include -isystem /usr/local/include/opencv  -g3 -gdwarf-2   -std=gnu++11 -o CMakeFiles/EMILYTracker.dir/Logger.cpp.o -c \"/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/Logger.cpp\"",
+  "file": "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/Logger.cpp"
+},
+{
+  "directory": "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker",
+  "command": "\"/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/nbproject/private/tools/localhost/GNU/g++\"    -isystem /usr/local/include -isystem /usr/local/include/opencv  -g3 -gdwarf-2   -std=gnu++11 -o CMakeFiles/EMILYTracker.dir/OutputVideo.cpp.o -c \"/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/OutputVideo.cpp\"",
+  "file": "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/OutputVideo.cpp"
+},
+{
+  "directory": "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker",
+  "command": "\"/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/nbproject/private/tools/localhost/GNU/g++\"    -isystem /usr/local/include -isystem /usr/local/include/opencv  -g3 -gdwarf-2   -std=gnu++11 -o CMakeFiles/EMILYTracker.dir/Settings.cpp.o -c \"/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/Settings.cpp\"",
+  "file": "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/Settings.cpp"
+},
+{
+  "directory": "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker",
+  "command": "\"/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/nbproject/private/tools/localhost/GNU/g++\"    -isystem /usr/local/include -isystem /usr/local/include/opencv  -g3 -gdwarf-2   -std=gnu++11 -o CMakeFiles/EMILYTracker.dir/Undistort.cpp.o -c \"/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/Undistort.cpp\"",
+  "file": "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/Undistort.cpp"
+},
+{
+  "directory": "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker",
+  "command": "\"/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/nbproject/private/tools/localhost/GNU/g++\"    -isystem /usr/local/include -isystem /usr/local/include/opencv  -g3 -gdwarf-2   -std=gnu++11 -o CMakeFiles/EMILYTracker.dir/UserInterface.cpp.o -c \"/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/UserInterface.cpp\"",
+  "file": "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/UserInterface.cpp"
+},
+{
+  "directory": "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker",
+  "command": "\"/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/nbproject/private/tools/localhost/GNU/g++\"    -isystem /usr/local/include -isystem /usr/local/include/opencv  -g3 -gdwarf-2   -std=gnu++11 -o CMakeFiles/EMILYTracker.dir/main.cpp.o -c \"/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/main.cpp\"",
+  "file": "/Users/jan/Documents/Research/Projects/EMILY Tracker/Code/EMILYTracker/main.cpp"
+}
+]

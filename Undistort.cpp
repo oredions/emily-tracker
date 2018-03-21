@@ -20,6 +20,12 @@ Undistort::Undistort(const Undistort& orig) {
 Undistort::~Undistort() {
 }
 
+/**
+ * Undistort for camera distortion.
+ * 
+ * @param HSV_frame
+ * @param original_frame
+ */
 void Undistort::undistort_camera(Mat& HSV_frame, Mat& original_frame) {
     remap(original_frame, original_frame, undistortRectifyMap1, undistortRectifyMap2, INTER_LINEAR);
     remap(HSV_frame, HSV_frame, undistortRectifyMap1, undistortRectifyMap2, INTER_LINEAR);
@@ -28,6 +34,12 @@ void Undistort::undistort_camera(Mat& HSV_frame, Mat& original_frame) {
     settings->camera_angle_radians = ((double) settings->camera_angle_degrees - 90.) * PI / 180;
 }
 
+/**
+ * Undistort for perspective distortion.
+ * 
+ * @param HSV_frame
+ * @param original_frame
+ */
 void Undistort::undistort_perspective(Mat& HSV_frame, Mat& original_frame) {
     Mat camera_projection_matrix = (Mat_<double>(4, 3) <<
             1, 0, 0,
@@ -118,7 +130,7 @@ void Undistort::undistort_perspective(Mat& HSV_frame, Mat& original_frame) {
 }
 
 /**
- * Manual undistort functionality.
+ * Undistort for perspective distortion. Use manually set camera parameters and manual computation.
  * 
  * @param HSV_frame
  * @param original_frame

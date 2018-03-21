@@ -3,19 +3,13 @@
   <logicalFolder name="root" displayName="root" projectFiles="true" kind="ROOT">
     <df root="." name="0">
       <in>Command.cpp</in>
-      <in>Command.hpp</in>
       <in>Communication.cpp</in>
-      <in>Communication.hpp</in>
       <in>Control.cpp</in>
       <in>Logger.cpp</in>
-      <in>Logger.hpp</in>
       <in>OutputVideo.cpp</in>
-      <in>OutputVideo.hpp</in>
       <in>Settings.cpp</in>
       <in>Undistort.cpp</in>
-      <in>Undistort.hpp</in>
       <in>UserInterface.cpp</in>
-      <in>UserInterface.hpp</in>
       <in>main.cpp</in>
     </df>
     <logicalFolder name="ExternalFiles"
@@ -39,6 +33,9 @@
         <dependencyChecking>false</dependencyChecking>
         <rebuildPropChanged>false</rebuildPropChanged>
       </toolsSet>
+      <flagsDictionary>
+        <element flagsID="0" commonFlags="-std=gnu++11"/>
+      </flagsDictionary>
       <codeAssistance>
       </codeAssistance>
       <makefileType>
@@ -50,8 +47,8 @@
           <ccTool>
             <standard>8</standard>
             <incDir>
-              <pElem>/usr/local/include/opencv</pElem>
               <pElem>/usr/local/include</pElem>
+              <pElem>/usr/local/include/opencv</pElem>
             </incDir>
           </ccTool>
         </makeTool>
@@ -61,35 +58,41 @@
           <preBuildFirst>true</preBuildFirst>
         </preBuild>
       </makefileType>
-      <item path="Command.cpp" ex="false" tool="1" flavor2="0">
+      <item path="Command.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
       </item>
-      <item path="Command.hpp" ex="false" tool="3" flavor2="0">
+      <item path="Communication.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
       </item>
-      <item path="Communication.cpp" ex="false" tool="1" flavor2="0">
+      <item path="Control.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
       </item>
-      <item path="Communication.hpp" ex="false" tool="3" flavor2="0">
+      <item path="Logger.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
       </item>
-      <item path="Control.cpp" ex="false" tool="1" flavor2="0">
+      <item path="OutputVideo.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
       </item>
-      <item path="Logger.cpp" ex="false" tool="1" flavor2="0">
+      <item path="Settings.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
       </item>
-      <item path="Logger.hpp" ex="false" tool="3" flavor2="0">
+      <item path="Undistort.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
       </item>
-      <item path="OutputVideo.cpp" ex="false" tool="1" flavor2="0">
+      <item path="UserInterface.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
       </item>
-      <item path="OutputVideo.hpp" ex="false" tool="3" flavor2="0">
-      </item>
-      <item path="Settings.cpp" ex="false" tool="0" flavor2="0">
-      </item>
-      <item path="Undistort.cpp" ex="false" tool="1" flavor2="0">
-      </item>
-      <item path="Undistort.hpp" ex="false" tool="3" flavor2="0">
-      </item>
-      <item path="UserInterface.cpp" ex="false" tool="1" flavor2="0">
-      </item>
-      <item path="UserInterface.hpp" ex="false" tool="3" flavor2="0">
-      </item>
-      <item path="main.cpp" ex="false" tool="1" flavor2="0">
+      <item path="main.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="0">
+        </ccTool>
       </item>
     </conf>
   </confs>

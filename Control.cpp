@@ -41,50 +41,86 @@ double Control::get_throttle(double max_throttle, double distance_to_target) {
     }
 }
 
-void Control::get_target_vector(double xe, double ye, double xv, double yv, double& target_vector){
-    target_vector = atan2(yv - ye, xv - xe) * 180 / PI;
+/**
+ * Get the vector from USV to the target.
+ * 
+ * @param usv_x USV's X coordinate
+ * @param usv_y USV's Y coordinate
+ * @param target_x Target X coordinate
+ * @param target_y Target Y coordinate
+ * @param target_vector
+ */
+void Control::get_target_vector(double usv_x, double usv_y, double target_x, double target_y, double& target_vector){
+    target_vector = atan2(target_y - usv_y, target_x - usv_x) * 180 / PI;
 }
 
-void Control::get_distance_to_target(double xe, double ye, double xv, double yv, double& distance_to_target){
-    distance_to_target = sqrt(pow(xe - xv, 2) + pow(ye - yv, 2));
+/**
+ * Get the distance between the USV and the target.
+ * 
+ * @param usv_x USV's X coordinate
+ * @param usv_y USV's Y coordinate
+ * @param target_x Target X coordinate
+ * @param target_y Target Y coordinate
+ * @param distance_to_target
+ */
+void Control::get_distance_to_target(double usv_x, double usv_y, double target_x, double target_y, double& distance_to_target){
+    distance_to_target = sqrt(pow(usv_x - target_x, 2) + pow(usv_y - target_y, 2));
 }
 
-Command * Control::get_control_commands(int xe_i, int ye_i, double theta, int xv_i, int yv_i) {
+/**
+ * Get current control commands.
+ * 
+ * @param usv_x USV's X coordinate
+ * @param usv_y USV's Y coordinate
+ * @param theta USV's current heading
+ * @param target_x Target X coordinate
+ * @param target_y Target Y coordinate
+ * @return 
+ */
+Command * Control::get_control_commands(double usv_x, double usv_y, double theta, double target_x, double target_y) {
 
-    double xe = (double) xe_i;
-    double ye = (double) ye_i;
-    double xv = (double) xv_i;
-    double yv = (double) yv_i;
-
+    // PID proportional gain
     double kp = settings->proportional / 1000.0;
 
+    // Get vector to target
     double target_vector;
-    get_target_vector(xe, ye, xv, yv, target_vector);
+    get_target_vector(usv_x, usv_y, target_x, target_y, target_vector);
 
+    // Initialize current commands
     Command * current_commands = new Command(0, 0);
 
+    // Get distance to target
     double distance_to_target;
-    get_distance_to_target(xe, ye, xv, yv, distance_to_target);
+    get_distance_to_target(usv_x, usv_y, target_x, target_y, distance_to_target);
 
     // Save distance to target
     current_commands->set_distance_to_target(distance_to_target);
 
-    if (distance_to_target < settings->target_radius) { // already reached target
+    // Check if the target was reached
+    if (distance_to_target < settings->target_radius) {
+        
+        // Already reached target
         cout << "Reached the target." << endl;
         target_reached = true;
         return current_commands;
+        
     } else {
-        if (fabs(target_vector - theta) < 180) { //normal case
+        
+        // Target was not reached yet. Check the angle to target.
+        
+        // Angle is less than 180
+        if (fabs(target_vector - theta) < 180) {
 
             // Save error angle to target
             current_commands->set_angle_error_to_target(target_vector - theta);
 
-            if (fabs(target_vector - theta) < 30) { //PID mode
+            // If the angle is less than given threshold, execute PID controller
+            if (fabs(target_vector - theta) < 30) {
 
                 current_commands->set_throttle(get_throttle(cruising_throttle, distance_to_target));
                 current_commands->set_rudder(kp * (target_vector - theta));
 
-            } else { //turning mode
+            } else { // If the angle is more than given threshold, switch to turning mode
 
                 current_commands->set_throttle(get_throttle(turning_throttle, distance_to_target));
 
@@ -93,9 +129,14 @@ Command * Control::get_control_commands(int xe_i, int ye_i, double theta, int xv
                 } else {
                     current_commands->set_rudder(-1.0); //turn right is negative
                 }
+                
             }
         }
-        if (fabs(target_vector - theta) >= 180) {// consider turning in other direction
+        
+        // Angle is more than 180, therefore consider turning in the other direction.
+        if (fabs(target_vector - theta) >= 180) {
+            
+            // Compute angular difference
             if (target_vector > theta) {
                 angle_difference = (target_vector - theta) - 360;
             } else {
@@ -105,24 +146,32 @@ Command * Control::get_control_commands(int xe_i, int ye_i, double theta, int xv
             // Save error angle to target
             current_commands->set_angle_error_to_target(angle_difference);
 
-            if (fabs(angle_difference) < 30) { //PID mode
+            // If the angle is less than given threshold, execute PID controller
+            if (fabs(angle_difference) < 30) {
+                
                 current_commands->set_throttle(get_throttle(cruising_throttle, distance_to_target));
                 current_commands->set_rudder(kp * angle_difference);
-            } else { //turning mode
+                
+            } else { // If the angle is more than given threshold, switch to turning mode
+                
                 current_commands->set_throttle(get_throttle(turning_throttle, distance_to_target));
+                
                 if (angle_difference > 0) {
                     current_commands->set_rudder(1.0); //turn left is positive
                 } else {
                     current_commands->set_rudder(-1.0); //turn right is negative
                 }
+                
             }
         }
     }
 
+    // Truncate rudder from above
     if (current_commands->get_rudder() > 1.0) {
         current_commands->set_rudder(1.0);
     }
 
+    // Truncate rudder from bellow
     if (current_commands->get_rudder() < -1.0) {
         current_commands->set_rudder(-1.0);
     }

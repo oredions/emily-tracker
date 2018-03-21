@@ -5,7 +5,7 @@
 
 #include "UserInterface.hpp"
 
-#define CAMSHIFT // TODO duplicate define
+#define CAMSHIFT
 
 // Program settings
 Settings * UserInterface::settings;
@@ -291,6 +291,12 @@ void UserInterface::draw_principal_axis(RotatedRect rectangle, Mat& frame) {
 
 }
 
+/**
+ * Draws current target location.
+ * 
+ * @param frame
+ * @param target_location
+ */
 void UserInterface::draw_target(Mat& frame, Point target_location) {
     if (target_location.x != 0 && target_location.y != 0) {
         circle(frame, target_location, settings->TARGET_RADIUS - 1, settings->TARGET_COLOR, 1, 8, 0);
@@ -302,6 +308,13 @@ void UserInterface::draw_target(Mat& frame, Point target_location) {
     }
 }
 
+/**
+ * Prints current status to the GUI.
+ * 
+ * @param frame
+ * @param status
+ * @param time_to_target
+ */
 void UserInterface::print_status(Mat& frame, int status, double time_to_target) {
 
     String stringStatus;
@@ -346,10 +359,20 @@ string UserInterface::int_to_string(int number) {
     return stringStream.str();
 }
 
+/**
+ * Show main window.
+ * 
+ * @param mat
+ */
 void UserInterface::show_main(Mat& mat) {
     imshow(UserInterface::settings->MAIN_WINDOW, mat);
 }
 
+/**
+ * Show histogram window.
+ * 
+ * @param mat
+ */
 void UserInterface::show_histogram(Mat& mat) {
     imshow(UserInterface::settings->HISTOGRAM_WINDOW, mat);
 }

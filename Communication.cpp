@@ -31,6 +31,11 @@ Communication::~Communication() {
     
 }
 
+/**
+ * Sends command to USV's ground control station.
+ * 
+ * @param command
+ */
 void Communication::send_command(Command& command) {
 
     // Pack datagram
@@ -43,6 +48,10 @@ void Communication::send_command(Command& command) {
 
 }
 
+/**
+ * Stop USV.
+ * 
+ */
 void Communication::stop_robot() {
     
     Command * stop_command = new Command(0, 0);
@@ -51,6 +60,10 @@ void Communication::stop_robot() {
     
 }
 
+/**
+ * Close all communication.
+ * 
+ */
 void Communication::close_communication() {
     
     // Close socket
