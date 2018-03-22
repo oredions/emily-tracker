@@ -121,7 +121,7 @@ void UserInterface::create_main_window() {
 }
 
 /**
- * Select object of interest in image.
+ * Mouse handler.
  * 
  */
 void UserInterface::onMouse(int event, int x, int y, int flags, void*) {
