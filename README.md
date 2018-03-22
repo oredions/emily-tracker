@@ -35,27 +35,15 @@ Details about the project can be found in the following IEEE publications:
 
     https://cmake.org
 
-5. Delete the following files from the root directory if they exist (those are system specific files that you will have to generate again on your system):
-
-    cmake_install.cmake
-
-    CMakeCache.txt
-
-    CMakeFiles
-
-    EMILYTracker
-
-    Makefile
-
-6. In terminal, change directory into the root directory of the project and run the following command to generate makefile:
+5. In terminal, change directory into the root directory of the project and run the following command to generate makefile:
 
     cmake .
 
-3. Compile the project:
+6. Compile the project:
 
     make
 
-8. Set up network for USB ethernet adapter:
+7. Set up network for USB ethernet adapter:
 
     IP Address: 192.168.1.3
 
