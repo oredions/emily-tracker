@@ -17,6 +17,8 @@ Details about the project can be found in the following IEEE publications:
 
 [Visual servoing of unmanned surface vehicle from small tethered unmanned aerial vehicle](https://arxiv.org/abs/1710.02932)
 
+Theoretical Limitations of Visual Navigation of Lifesaving USV using Small UAS (submitted to SSRR 2018)
+
 ## Installation on macOS
 
 1. Install Homebrew:
