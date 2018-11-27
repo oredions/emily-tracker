@@ -74,6 +74,15 @@ Control * control = new Control(* settings);
 // object of interest, computes histogram, and tracks it using mean shift.
 #define CAMSHIFT
 
+// Enable inverse perspective warping. This will take an angle from GUI and
+// approximate overhead view.
+//#define INVERSE_PERSPECTIVE_WARP
+
+// This will wait for an object of interest to be selected before loading next
+// frames. It will load the first frame only and wait for the user to select
+// an object. After an object is selected, it will continue loading next frames.
+#define WAIT_FOR_OBJECT_SELECTION
+
 ////////////////////////////////////////////////////////////////////////////////
 // Analysis
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,6 +155,9 @@ int status = 0;
 // Time it takes to reach the target.
 time_t startTarget, endTarget;
 double timeToTarget = 0;
+
+// Frame number
+long frame_number = -1;
 
 /**
  * Get size of the give rectangle. The size is measured as distance of midpoints
@@ -222,7 +234,7 @@ void draw_axis(Mat& img, Point p, Point q, Scalar colour, const float scale = 0.
  * @return 
  */
 double get_orientation(const vector<Point> &pts, Mat &img) {
-    
+
     //Construct a buffer used by the pca analysis
     int sz = static_cast<int> (pts.size());
     Mat data_pts = Mat(sz, 2, CV_64FC1);
@@ -230,14 +242,14 @@ double get_orientation(const vector<Point> &pts, Mat &img) {
         data_pts.at<double>(i, 0) = pts[i].x;
         data_pts.at<double>(i, 1) = pts[i].y;
     }
-    
+
     //Perform PCA analysis
     PCA pca_analysis(data_pts, Mat(), CV_PCA_DATA_AS_ROW);
-    
+
     //Store the center of the object
     Point cntr = Point(static_cast<int> (pca_analysis.mean.at<double>(0, 0)),
             static_cast<int> (pca_analysis.mean.at<double>(0, 1)));
-    
+
     //Store the eigenvalues and eigenvectors
     vector<Point2d> eigen_vecs(2);
     vector<double> eigen_val(2);
@@ -246,7 +258,7 @@ double get_orientation(const vector<Point> &pts, Mat &img) {
                 pca_analysis.eigenvectors.at<double>(i, 1));
         eigen_val[i] = pca_analysis.eigenvalues.at<double>(0, i);
     }
-    
+
     // Draw the principal components
     circle(img, cntr, 3, Scalar(255, 0, 255), 2);
     Point p1 = cntr + 0.02 * Point(static_cast<int> (eigen_vecs[0].x * eigen_val[0]), static_cast<int> (eigen_vecs[0].y * eigen_val[0]));
@@ -254,7 +266,7 @@ double get_orientation(const vector<Point> &pts, Mat &img) {
     draw_axis(img, cntr, p1, Scalar(0, 255, 0), 1);
     draw_axis(img, cntr, p2, Scalar(255, 255, 0), 5);
     double angle = atan2(eigen_vecs[0].y, eigen_vecs[0].x); // orientation in radians
-    
+
     return angle;
 }
 
@@ -478,6 +490,10 @@ void create_log_entry(Logger* logger, Command* current_commands) {
     logger->log_general(current_time);
     logger->log_general(" ");
 
+    // Log frame number
+    logger->log_general(frame_number);
+    logger->log_general(" ");
+
     // Log EMILY location
     logger->log_general(emily_location.x);
     logger->log_general(" ");
@@ -645,6 +661,15 @@ int main(int argc, char** argv) {
     // Paused mode
     bool paused = false;
 
+#ifdef WAIT_FOR_OBJECT_SELECTION
+    
+    // This will prevent the algorithm from loading second frame if the first
+    // frame was not used yet. Will be set to true after the algorithm uses the
+    // first frame
+    bool first_frame_used = false;
+    
+#endif
+    
     ////////////////////////////////////////////////////////////////////////////
     // Initialization of communication
     ////////////////////////////////////////////////////////////////////////////
@@ -655,7 +680,9 @@ int main(int argc, char** argv) {
     // Initialization of camera distortion parameters
     ////////////////////////////////////////////////////////////////////////////
 
+#ifdef INVERSE_PERSPECTIVE_WARP
     Undistort * undistort = new Undistort(* settings, resized_video_size);
+#endif
 
     ////////////////////////////////////////////////////////////////////////////
     // Tracking
@@ -665,22 +692,75 @@ int main(int argc, char** argv) {
     //    Mat first;
     //    video_capture >> first;
 
+#ifdef WAIT_FOR_OBJECT_SELECTION
+    
+    // Always read the first frame so that the object of interest can be
+    // selected. First frame has to be stored in its own variable because the
+    // algorithm draws into original_frame and therefore it cannot be reused
+    // in the next iteration.
+    Mat first_frame;
+    video_capture >> first_frame;
+    frame_number++;
+    
+#endif
+
     // Iterate over each frame from the video input and wait between iterations.
     while (waitKey(1) != 27) {
 
-        // If not paused       
+        // If not paused
         if (!paused) {
+
+#ifdef WAIT_FOR_OBJECT_SELECTION
+            
+            // Only load new frames after object of interest was selected and is being tracked (-1 is only selected but not tracked yet, 0 is not selected at all)
+            if (object_selected == 1) {
+
+                // If the first frame was not used yet, do not load the second frame
+                if (!first_frame_used) {
+
+                    // Used the first frame (it is important to use copyTo,
+                    // otherwise it will be assigned by reference and it will make the first frame dirty.
+                    first_frame.copyTo(original_frame);
+                    
+                    // Now the first frame was used, so next time load the second frame
+                    first_frame_used = true;
+
+                } else {
+
+                    // Read one frame
+                    video_capture >> original_frame;
+
+                    // Increase frame number counter
+                    frame_number++;
+
+                }
+
+                // End if frame is empty
+                if (original_frame.empty()) {
+                    break;
+                }
+                
+            } else {
+             
+                // Object is not selected so still use the first frame
+                first_frame.copyTo(original_frame);
+                
+            }
+            
+#else
 
             // Read one frame
             video_capture >> original_frame;
 
-            //            // Use only first frame
-            //            first.copyTo(original_frame);
+            // Increase frame number counter
+            frame_number++;
 
             // End if frame is empty
             if (original_frame.empty()) {
                 break;
             }
+
+#endif
 
         }
 
@@ -716,6 +796,8 @@ int main(int argc, char** argv) {
         // Distortion and Inverse Perspective Warping
         ////////////////////////////////////////////////////////////////////////
 
+#ifdef INVERSE_PERSPECTIVE_WARP
+
         // Undistort camera
         // TODO enable undistort
         //undistort->undistort_camera(HSV_frame, original_frame);
@@ -723,6 +805,8 @@ int main(int argc, char** argv) {
         // Camera projection matrix
         // TODO change to automatic undistort
         undistort->undistort_perspective_manual(HSV_frame, original_frame);
+
+#endif
 
         ////////////////////////////////////////////////////////////////////////
         // Thresholding
@@ -1333,10 +1417,10 @@ int main(int argc, char** argv) {
             current_commands->set_rudder(0);
 
             if (!target_reached) {
-                
+
                 // Set status
                 status = 1;
-                
+
             }
 
         }
@@ -1354,9 +1438,22 @@ int main(int argc, char** argv) {
         // Debugging
         //cout << "Throttle: " << current_commands->get_throttle() << " Rudder: " << current_commands->get_rudder() << endl;
 
+#ifdef WAIT_FOR_OBJECT_SELECTION
+        
+        // Only create log entry after the object been selected and first frame used for tracking
+        if (object_selected && first_frame_used) {
+            
+#endif         
+               
         // Log the data
         create_log_entry(logger, current_commands);
-
+        
+#ifdef WAIT_FOR_OBJECT_SELECTION
+        
+        }
+            
+#endif        
+        
     }
 
     // Close logs

@@ -3,6 +3,18 @@
   <logicalFolder name="root" displayName="root" projectFiles="true" kind="ROOT">
     <df root="." name="0">
       <df name="CMakeFiles">
+        <df name="3.12.3">
+          <df name="CompilerIdC">
+            <df name="tmp">
+            </df>
+            <in>CMakeCCompilerId.c</in>
+          </df>
+          <df name="CompilerIdCXX">
+            <df name="tmp">
+            </df>
+            <in>CMakeCXXCompilerId.cpp</in>
+          </df>
+        </df>
         <df name="3.7.2">
           <df name="CompilerIdC">
             <in>CMakeCCompilerId.c</in>

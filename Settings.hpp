@@ -61,9 +61,9 @@ public:
     ////////////////////////////////////////////////////////////////////////////
 
     // Lake Bryan AI Robotic class field test 2016 03 31
-    //string video_capture_source = "input/2016_03_31_lake_bryan.mp4";
-    //int saturation_min = 52;
-    //int value_min = 10;
+    string video_capture_source = "input/2016_03_31_lake_bryan.mp4";
+    int saturation_min = 52;
+    int value_min = 10;
 
     // Fort Bend floods 2016 04 26
     //string video_capture_source = "input/2016_04_26_fort_bend.mp4";
@@ -71,9 +71,9 @@ public:
     //int value_min = 100;
 
     // Lake Bryan AI Robotics class final 2016 05 10
-    string video_capture_source = "input/2016_05_10_lake_bryan.mov";
-    int saturation_min = 30;
-    int value_min = 10;
+//    string video_capture_source = "input/2016_05_10_lake_bryan.mov";
+//    int saturation_min = 30;
+//    int value_min = 10;
 
     // Lab 2016 07 05
     //string video_capture_source = "input/2016_07_05_lab.avi";

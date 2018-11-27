@@ -285,7 +285,7 @@ void UserInterface::draw_principal_axis(RotatedRect rectangle, Mat& frame) {
     // Save EMILY pose
     emily_pose_point_1 = shortest_axis_midpoint_1;
     emily_pose_point_2 = shortest_axis_midpoint_2;
-
+    
     // Draw line representing principal axis of symmetry
     line(frame, shortest_axis_midpoint_1, shortest_axis_midpoint_2, UserInterface::settings->POSE_LINE_COLOR, UserInterface::settings->POSE_LINE_THICKNESS, 8);
 
