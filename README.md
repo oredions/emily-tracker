@@ -9,11 +9,15 @@ Details about the project can be found in the following IEEE publications:
 
 [Visual pose estimation of USV from UAV to assist drowning victims recovery](http://ieeexplore.ieee.org/document/7784291/)
 
+[Visual navigation of USV from UAS to save drowning victims](http://www.dufek.me/research/publications/VisualNavigationOfUSVFromUASToSaveDrowningVictims.pdf)
+
 [UAV assisted USV visual navigation for marine mass casualty incident response](http://ieeexplore.ieee.org/document/8206510/)
 
 [Visual pose stabilization of tethered small unmanned aerial system to assist drowning victim recovery](http://ieeexplore.ieee.org/document/8088149/)
 
 [Visual servoing of unmanned surface vehicle from small tethered unmanned aerial vehicle](https://arxiv.org/abs/1710.02932)
+
+Theoretical Limitations of Visual Navigation of Lifesaving USV using Small UAS (submitted to SSRR 2018)
 
 ## Installation on macOS
 
