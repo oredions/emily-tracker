@@ -58,27 +58,57 @@ public:
 
     ////////////////////////////////////////////////////////////////////////////////
     // Video files
-    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
 
     // Lake Bryan AI Robotic class field test 2016 03 31
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    // Input video file
     string video_capture_source = "input/2016_03_31_lake_bryan.mp4";
-    int saturation_min = 52;
-    int value_min = 10;
+    
+    // Parameters for histogramming
+    //int saturation_min = 52;
+    //int value_min = 10;
+    
+    // Parameters for thresholding
+    int saturation_min = 58;
+    int value_min = 81;
 
     // Fort Bend floods 2016 04 26
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    // Input video file
     //string video_capture_source = "input/2016_04_26_fort_bend.mp4";
+    
+    // Parameters for histogramming
     //int saturation_min = 120;
     //int value_min = 100;
+    
+    // Parameters for thresholding
 
     // Lake Bryan AI Robotics class final 2016 05 10
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    // Input video file
 //    string video_capture_source = "input/2016_05_10_lake_bryan.mov";
-//    int saturation_min = 30;
+    
+    // Parameters for histogramming
+//    int saturation_min = 30; // Was 10 in 2016
 //    int value_min = 10;
+    
+    // Parameters for thresholding
 
     // Lab 2016 07 05
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    // Input video file
     //string video_capture_source = "input/2016_07_05_lab.avi";
+    
+    // Parameters for histogramming
     //int saturation_min = 130;
     //int value_min = 10;
+    
+    // Parameters for thresholding
     
     ////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////

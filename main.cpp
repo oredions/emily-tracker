@@ -72,6 +72,8 @@ Control * control = new Control(* settings);
 
 // Enable advanced Camshift algorithm. It will let you choose object
 // object of interest, computes histogram, and tracks it using mean shift.
+// Important: if CAMSHIFT pragma is not defined, do not
+// define WAIT_FOR_OBJECT_SELECTION pragma, as there would be no object selection.
 #define CAMSHIFT
 
 // Enable inverse perspective warping. This will take an angle from GUI and
@@ -816,11 +818,11 @@ int main(int argc, char** argv) {
 
         // Threshold on lower red
         Mat lower_red_threshold;
-        inRange(HSV_frame, cv::Scalar(hue_1_min, saturation_min, value_min), cv::Scalar(hue_1_max, saturation_max, value_max), lower_red_threshold);
+        inRange(HSV_frame, cv::Scalar(settings->hue_1_min, settings->saturation_min, settings->value_min), cv::Scalar(settings->hue_1_max, settings->saturation_max, settings->value_max), lower_red_threshold);
 
         // Threshold on upper red
         Mat upper_red_threshold;
-        inRange(HSV_frame, cv::Scalar(hue_2_min, saturation_min, value_min), cv::Scalar(hue_2_max, saturation_max, value_max), upper_red_threshold);
+        inRange(HSV_frame, cv::Scalar(settings->hue_2_min, settings->saturation_min, settings->value_min), cv::Scalar(settings->hue_2_max, settings->saturation_max, settings->value_max), upper_red_threshold);
 
         // Add thresholds together
         Mat threshold;
@@ -828,12 +830,12 @@ int main(int argc, char** argv) {
 
         // Erode to filter noise
         Mat eroded_dilated_threshold;
-        Mat erode_element = getStructuringElement(MORPH_RECT, Size(erode_size, erode_size));
+        Mat erode_element = getStructuringElement(MORPH_RECT, Size(settings->erode_size, settings->erode_size));
         erode(threshold, eroded_dilated_threshold, erode_element);
         erode(eroded_dilated_threshold, eroded_dilated_threshold, erode_element);
 
         // Dilate to make blobs more distinctive
-        Mat dilate_element = getStructuringElement(MORPH_RECT, Size(dilate_size, dilate_size));
+        Mat dilate_element = getStructuringElement(MORPH_RECT, Size(settings->dilate_size, settings->dilate_size));
         dilate(eroded_dilated_threshold, eroded_dilated_threshold, dilate_element);
         dilate(eroded_dilated_threshold, eroded_dilated_threshold, dilate_element);
 
@@ -936,7 +938,7 @@ int main(int argc, char** argv) {
                 double area = moment.m00;
 
                 // Check if the area is within the set limit
-                if (area > MIN_BLOB_AREA && area < MAX_BLOB_AREA) {
+                if (area > settings->MIN_BLOB_AREA && area < settings->MAX_BLOB_AREA) {
 
                     // Get x coordinate
                     x = moment.m10 / area;
@@ -1011,7 +1013,7 @@ int main(int argc, char** argv) {
                     //ellipse(original_frame, min_ellipse, Scalar(255,0,0), 2, 8 );
 
                     // Draw pose
-                    draw_principal_axis(min_ellipse);
+                    user_interface->draw_principal_axis(min_ellipse, original_frame);
 
                     ////////////////////////////////////////////////////////////
                     // Draw EMILY location in the image
@@ -1021,7 +1023,7 @@ int main(int argc, char** argv) {
                     double object_size = get_size(min_ellipse);
 
                     // Draw object
-                    draw_object_position(max_area_object_x, max_area_object_y, object_size, original_frame);
+                    user_interface->draw_position(max_area_object_x, max_area_object_y, object_size, original_frame);
 
                     // Save EMILY location
                     emily_location = Point(max_area_object_x, max_area_object_y);
