@@ -60,55 +60,62 @@ public:
     // Video files
     ////////////////////////////////////////////////////////////////////////////////
 
-    // Lake Bryan AI Robotic class field test 2016 03 31
+    // Trial 1: Lake Bryan AI Robotic class field test 2016 03 28
     ////////////////////////////////////////////////////////////////////////////////
     
     // Input video file
-    string video_capture_source = "input/2016_03_31_lake_bryan.mp4";
-    
-    // Parameters for histogramming
-    //int saturation_min = 52;
-    //int value_min = 10;
+    string video_capture_source = "input/2016_03_28_lake_bryan.mp4";
     
     // Parameters for thresholding
-    int saturation_min = 58;
-    int value_min = 81;
+//    int saturation_min = 58;
+//    int value_min = 81;
+    
+    // Parameters for histogramming
+    int saturation_min = 52;
+    int value_min = 10;
 
-    // Fort Bend floods 2016 04 26
+    // Trial 2: Fort Bend floods 2016 04 23
     ////////////////////////////////////////////////////////////////////////////////
     
     // Input video file
-    //string video_capture_source = "input/2016_04_26_fort_bend.mp4";
-    
-    // Parameters for histogramming
-    //int saturation_min = 120;
-    //int value_min = 100;
+//    string video_capture_source = "input/2016_04_23_fort_bend.mp4";
     
     // Parameters for thresholding
+//    int saturation_min = 120;
+//    int value_min = 100;
+    
+    // Parameters for histogramming
+//    int saturation_min = 120;
+//    int value_min = 100;
 
-    // Lake Bryan AI Robotics class final 2016 05 10
+    // Trial 3: Lake Bryan AI Robotics class final 2016 05 10
     ////////////////////////////////////////////////////////////////////////////////
     
     // Input video file
 //    string video_capture_source = "input/2016_05_10_lake_bryan.mov";
     
-    // Parameters for histogramming
+    // Parameters for thresholding
 //    int saturation_min = 30; // Was 10 in 2016
 //    int value_min = 10;
     
-    // Parameters for thresholding
+    // Parameters for histogramming
+//    int saturation_min = 30; // Was 10 in 2016
+//    int value_min = 10;
 
-    // Lab 2016 07 05
+    // Trial 4: Lab 2016 07 05
     ////////////////////////////////////////////////////////////////////////////////
     
     // Input video file
-    //string video_capture_source = "input/2016_07_05_lab.avi";
-    
-    // Parameters for histogramming
-    //int saturation_min = 130;
-    //int value_min = 10;
+//    string video_capture_source = "input/2016_07_05_lab.mp4";
     
     // Parameters for thresholding
+//    int saturation_min = 167;
+//    int value_min = 50;
+//    int hue_2_min = 180; // Uncomment the other hue_2_min
+    
+    // Parameters for histogramming
+//    int saturation_min = 130;
+//    int value_min = 10;
     
     ////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////
@@ -122,7 +129,6 @@ public:
 
     // Hue 2 range for thresholding
     int hue_2_min = 160;
-    //int hue_2_min = 180; // Works well for lab
     int hue_2_max = 180;
 
     // Saturation range for thresholding
