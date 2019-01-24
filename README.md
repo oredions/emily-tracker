@@ -5,19 +5,21 @@ The implementation relies on a robust vision-based algorithm for position and or
 
 ## Publications
 
-Details about the project can be found in the following IEEE publications:
+Details about the project can be found in the following publications:
 
-[Visual pose estimation of USV from UAV to assist drowning victims recovery](http://ieeexplore.ieee.org/document/7784291/)
+[Visual pose estimation of USV from UAV to assist drowning victims recovery](http://ieeexplore.ieee.org/document/7784291/) (IEEE SSRR 2016)
 
-[Visual navigation of USV from UAS to save drowning victims](http://www.dufek.me/research/publications/VisualNavigationOfUSVFromUASToSaveDrowningVictims.pdf)
+[Visual navigation of USV from UAS to save drowning victims](http://www.dufek.me/research/publications/VisualNavigationOfUSVFromUASToSaveDrowningVictims.pdf) (AUVSI XPONENTIAL 2017)
 
-[UAV assisted USV visual navigation for marine mass casualty incident response](http://ieeexplore.ieee.org/document/8206510/)
+[UAV assisted USV visual navigation for marine mass casualty incident response](http://ieeexplore.ieee.org/document/8206510/) (IEEE/RSJ IROS 2017)
 
-[Visual pose stabilization of tethered small unmanned aerial system to assist drowning victim recovery](http://ieeexplore.ieee.org/document/8088149/)
+[Visual servoing of unmanned surface vehicle from small tethered unmanned aerial vehicle](https://arxiv.org/abs/1710.02932) (ArXiv)
 
-[Visual servoing of unmanned surface vehicle from small tethered unmanned aerial vehicle](https://arxiv.org/abs/1710.02932)
+[Visual pose stabilization of tethered small unmanned aerial system to assist drowning victim recovery](http://ieeexplore.ieee.org/document/8088149/) (IEEE SSRR 2017)
 
-Theoretical Limitations of Visual Navigation of Lifesaving USV using Small UAS (submitted to SSRR 2018)
+[Theoretical Limitations of Visual Navigation of Lifesaving USV using Small UAS](https://ieeexplore.ieee.org/document/8468652) (IEEE SSRR 2018)
+
+Visual pose estimation of unmanned surface vehicle from unmanned aerial system in marine mass casualty events (submitted to [Frontiers in Robotics and AI](https://www.frontiersin.org/journals/robotics-and-ai))
 
 ## Installation on macOS
 
